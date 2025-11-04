@@ -18,18 +18,18 @@
   <div id="tableContainer">
     <table class="displayTable">
       <thead>
-        <tr id="headerRow">
-          <th>LOCATION</th>
-          <th>DATE</th>
-          <th>TIME</th>
-          <th>TEMPERATURE</th>
-          <th>HUMIDITY</th>
-          <th id="pressureHeader" class="hidden">PRESSURE</th>
+        <tr class="tableRow" id="headerRow">
+          <th class="headerCell">LOCATION</th>
+          <th class="headerCell">DATE</th>
+          <th class="headerCell">TIME</th>
+          <th class="headerCell">TEMPERATURE</th>
+          <th class="headerCell">HUMIDITY</th>
+          <th class="headerCell" id="pressureHeader" class="hidden">PRESSURE</th>
         </tr>
       </thead>
       <tbody>
-        <tr id="valueRow">
-          <td id="locationCell">
+        <tr class="tableRow" id="valueRow">
+          <td class="valueCell" id="locationCell">
             <select id="locationSelector" onchange="updateTable()">
               <option value="" disabled selected hidden>Select an option</option>
               <option value="0">Pressure 1</option>
@@ -45,11 +45,11 @@
               <option value="10">No Pressure 6</option>
             </select>
           </td>
-          <td id="dateCell"></td>
-          <td id="timeCell"></td>
-          <td id="temperatureCell"></td>
-          <td id="humidityCell"></td>
-          <td id="pressureCell" class="hidden"></td>
+          <td class="valueCell" id="dateCell"></td>
+          <td class="valueCell" id="timeCell"></td>
+          <td class="valueCell" id="temperatureCell"></td>
+          <td class="valueCell" id="humidityCell"></td>
+          <td class="valueCell" id="pressureCell" class="hidden"></td>
         </tr>
       </tbody>
     </table>
