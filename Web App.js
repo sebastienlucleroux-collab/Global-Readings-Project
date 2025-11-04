@@ -22,24 +22,47 @@ function getAllSensorData() {
   const result = {};
 
   data.forEach(row => {
-    const sensorIndex = row[0];
+    const sensorIndexRaw = row[0];
+    if (sensorIndexRaw === '' || sensorIndexRaw === null || sensorIndexRaw === undefined) return;
+
+    // Convert to 0-indexed key (assuming sheet sensors start at 1)
+    const sensorIndex = Number(sensorIndexRaw) - 1;
+    if (isNaN(sensorIndex) || sensorIndex < 0) return;
+
     if (!result[sensorIndex]) result[sensorIndex] = [];
 
-    row.shift();
-    const [dateStr, timeStr] = row[0].split(' ');
-    const [month, day, year] = dateStr.split('/');
-    const formattedDate = `${year}/${month.padStart(2, '0')}/${day.padStart(2, '0')}`;
+    // Parse timestamp properly
+    let timestamp = null;
+    if (row[1] instanceof Date) {
+      timestamp = row[1];
+    } else if (typeof row[1] === 'string') {
+      const parsed = Date.parse(row[1].trim());
+      if (!isNaN(parsed)) timestamp = new Date(parsed);
+    }
+    if (!timestamp) timestamp = new Date(0);
+
+    // Format values safely
+    const formattedDate = Utilities.formatDate(timestamp, Session.getScriptTimeZone(), "yyyy/MM/dd");
+    const timeStr = Utilities.formatDate(timestamp, Session.getScriptTimeZone(), "HH:mm");
+
+    const tempRaw = safeNumber(row[2]);
+    const humRaw = safeNumber(row[3]);
+    const presRaw = (row[4] === "N/A" || row[4] === null || row[4] === undefined) ? null : safeNumber(row[4]);
 
     result[sensorIndex].push([
       formattedDate,
       timeStr,
-      `${row[1].toFixed(1)}°C`,
-      `${(Number(row[2].toFixed(1)) * 100).toFixed(1)}%`,
-      row[3] === "N/A" ? row[3] : `${row[3].toFixed(1)}Pa`
+      tempRaw === null ? "N/A" : `${tempRaw.toFixed(1)}°C`,
+      humRaw === null ? "N/A" : `${(Number(humRaw.toFixed(1)) * 100).toFixed(1)}%`,
+      presRaw === null ? "N/A" : `${presRaw.toFixed(1)}Pa`
     ]);
   });
 
   return result;
+}
+function safeNumber(value) {
+  const num = Number(value);
+  return isNaN(num) ? null : num;
 }
 
 function getLatestSensorData() {
@@ -48,26 +71,46 @@ function getLatestSensorData() {
   const latest = {};
 
   data.forEach(row => {
-    const sensorIndex = row[0];
-    const timestamp = new Date(row[1]);
+    const sensorIndexRaw = row[0];
+    if (sensorIndexRaw === '' || sensorIndexRaw === null || sensorIndexRaw === undefined) return;
 
+    // Convert to 0-indexed key (if sensor numbering starts at 1)
+    const sensorIndex = Number(sensorIndexRaw) - 1;
+    if (isNaN(sensorIndex) || sensorIndex < 0) return;
+
+    // Parse timestamp robustly
+    let timestamp = null;
+    if (row[1] instanceof Date) {
+      timestamp = row[1];
+    } else if (typeof row[1] === 'string') {
+      const parsed = Date.parse(row[1].trim());
+      if (!isNaN(parsed)) timestamp = new Date(parsed);
+    }
+    if (!timestamp) timestamp = new Date(0);
+
+    // Only keep the most recent reading per sensor
     if (!latest[sensorIndex] || timestamp > latest[sensorIndex].timestamp) {
       const formattedDate = Utilities.formatDate(timestamp, Session.getScriptTimeZone(), "yyyy/MM/dd");
       const timeStr = Utilities.formatDate(timestamp, Session.getScriptTimeZone(), "HH:mm");
+
+      const tempRaw = safeNumber(row[2]);
+      const humRaw = safeNumber(row[3]);
+      const presRaw = (row[4] === "N/A" || row[4] === null || row[4] === undefined) ? null : safeNumber(row[4]);
 
       latest[sensorIndex] = {
         timestamp,
         reading: [
           formattedDate,
           timeStr,
-          `${row[2].toFixed(1)}°C`,
-          `${(Number(row[3].toFixed(1)) * 100).toFixed(1)}%`,
-          row[4] === "N/A" ? row[4] : `${row[4].toFixed(1)}Pa`
+          tempRaw === null ? "N/A" : `${tempRaw.toFixed(1)}°C`,
+          humRaw === null ? "N/A" : `${(Number(humRaw.toFixed(1)) * 100).toFixed(1)}%`,
+          presRaw === null ? "N/A" : `${presRaw.toFixed(1)}Pa`
         ]
       };
     }
   });
 
+  // Return a clean 0-indexed result map
   const result = {};
   Object.keys(latest).forEach(index => {
     result[index] = latest[index].reading;
@@ -75,6 +118,7 @@ function getLatestSensorData() {
 
   return result;
 }
+
 
 function include(filename) {
   return HtmlService.createHtmlOutputFromFile(filename)
