@@ -1,6 +1,6 @@
 <script>
   let alertInfo = [];
-  let tableData = { date: "", time: "", temperature: "", humidity: "", pressure: "" };
+  let tableData = [];
 
   function changeTableData() {
     const index = document.getElementById('locationSelector').value;
@@ -11,7 +11,7 @@
       if (allData[index]) {
         console.log("Loaded history from cache!");
         const sensorData = allData[index];
-        const tableData = sensorData.map(row => ({
+        tableData = sensorData.map(row => ({
           date: row[0],
           time: row[1],
           temperature: row[2],
@@ -23,11 +23,12 @@
       }
     }
 
-    // fallback if cache isn't ready
     console.log("Cache not available yet, fetching from server...");
+    document.querySelector("#example-table").innerHTML = "<p>Loading data...</p>";
+
     google.script.run
       .withSuccessHandler(function (result) {
-        const tableData = result.map(row => ({
+        tableData = result.map(row => ({
           date: row[0],
           time: row[1],
           temperature: row[2],
@@ -40,30 +41,6 @@
       .getSensorData(index);
   }
 
-
-  /*
-  function changeTableData(){
-    const param = `${Number(document.getElementById('locationSelector').value)+1}`;
-  
-    google.script.run
-      .withSuccessHandler(function(result) {
-        sensorData = result;
-        tableData = sensorData.map(row => ({
-          date: row[0],
-          time: row[1],
-          temperature: row[2],
-          humidity: row[3],
-          pressure: row[4]
-        }));
-        console.log(tableData);
-        table.replaceData(tableData);
-      })
-      .withFailureHandler(function(error) {
-        console.error('Error:', error);
-      })
-      .getSensorData(param);
-  }
-  */
   var table = new Tabulator("#example-table", {
     data: tableData,
     layout: "fitColumns",

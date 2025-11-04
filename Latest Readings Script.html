@@ -1,56 +1,14 @@
 <script>
-  /*
-    var sensorData = [];
-    var lastReading = [];
-  
-    function updateTable() {
-      const param = `${Number(document.getElementById('locationSelector').value) + 1}`;
-  
-      google.script.run
-        .withSuccessHandler(function (result) {
-          sensorData = result;
-          lastReading = sensorData[sensorData.length - 1];
-          insertValues();
-        })
-        .withFailureHandler(function (error) {
-          console.error('Error:', error);
-        })
-        .getSensorData(param);
-  
-  
-    }
-  
-    function insertValues() {
-      document.getElementById('dateCell').textContent = lastReading[0];
-      document.getElementById('timeCell').textContent = lastReading[1];
-      document.getElementById('temperatureCell').textContent = lastReading[2];
-      document.getElementById('humidityCell').textContent = lastReading[3];
-  
-      const pressureHeader = document.getElementById('pressureHeader');
-      const pressureCell = document.getElementById('pressureCell');
-  
-      if (lastReading[4] !== "N/A") {
-        pressureHeader.classList.remove('hidden');
-        pressureCell.classList.remove('hidden');
-        pressureCell.textContent = lastReading[4];
-      } else {
-        pressureHeader.classList.add('hidden');
-        pressureCell.classList.add('hidden');
-        pressureCell.textContent = '';
-      }
-    }
-  */
+
 
   let latestData = {};
   let allData = null;
 
   window.onload = function () {
-    // Load latest readings quickly
     google.script.run
       .withSuccessHandler(function (result) {
         latestData = result;
         console.log('Latest readings loaded:', latestData);
-        // Start background loading of full history
         preloadAllData();
       })
       .withFailureHandler(console.error)
@@ -98,6 +56,4 @@
       pressureCell.textContent = '';
     }
   }
-</script>
-
 </script>

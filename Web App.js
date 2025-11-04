@@ -2,19 +2,6 @@ function getSheet(name) {
   return SpreadsheetApp.getActiveSpreadsheet().getSheetByName(name);
 }
 
-function formatReadingRow(row) {
-  row.shift();
-  const [dateStr, timeStr] = row[0].split(' ');
-  const [month, day, year] = dateStr.split('/');
-  return {
-    date: `${year}/${month.padStart(2, '0')}/${day.padStart(2, '0')}`,
-    time: timeStr,
-    temperature: `${row[1].toFixed(1)}°C`,
-    humidity: `${(Number(row[2].toFixed(1)) * 100).toFixed(1)}%`,
-    pressure: row[3] === "N/A" ? row[3] : `${row[3].toFixed(1)}Pa`
-  };
-}
-
 function getScriptUrl() {
   var url = ScriptApp.getService().getUrl();
   return url;
@@ -58,8 +45,6 @@ function getAllSensorData() {
 function getLatestSensorData() {
   const sheet = getSheet('Readings Database');
   const data = sheet.getDataRange().getValues();
-
-  // Object to store the latest reading per sensor
   const latest = {};
 
   data.forEach(row => {
@@ -67,13 +52,13 @@ function getLatestSensorData() {
     const timestamp = new Date(row[1]);
 
     if (!latest[sensorIndex] || timestamp > latest[sensorIndex].timestamp) {
-      const [dateStr, timeStr] = Utilities.formatDate(timestamp, Session.getScriptTimeZone(), "MM/dd/yyyy HH:mm").split(' ');
-      const [month, day, year] = dateStr.split('/');
+      const formattedDate = Utilities.formatDate(timestamp, Session.getScriptTimeZone(), "yyyy/MM/dd");
+      const timeStr = Utilities.formatDate(timestamp, Session.getScriptTimeZone(), "HH:mm");
 
       latest[sensorIndex] = {
         timestamp,
         reading: [
-          `${year}/${month.padStart(2, '0')}/${day.padStart(2, '0')}`,
+          formattedDate,
           timeStr,
           `${row[2].toFixed(1)}°C`,
           `${(Number(row[3].toFixed(1)) * 100).toFixed(1)}%`,
@@ -83,37 +68,12 @@ function getLatestSensorData() {
     }
   });
 
-  // Return just the readings (not the timestamps)
   const result = {};
   Object.keys(latest).forEach(index => {
     result[index] = latest[index].reading;
   });
 
   return result;
-}
-
-function getSensorData(sensorIndex) {
-  const sheet = getSheet('Readings Database');
-  const data = sheet.getDataRange().getValues();
-  const numericIndex = Number(sensorIndex);
-
-  const sensorData = data
-    .filter(row => row[0] === numericIndex)
-    .map(row => {
-      row.shift();
-
-      const [dateStr, timeStr] = row[0].split(' ');
-      const [month, day, year] = dateStr.split('/');
-      const formattedDate = `${year}/${month.padStart(2, '0')}/${day.padStart(2, '0')}`;
-
-      const temperature = `${row[1].toFixed(1)}°C`;
-      const humidity = `${(Number(row[2].toFixed(1)) * 100).toFixed(1)}%`;
-      const pressure = (row[3] === "N/A") ? row[3] : `${row[3].toFixed(1)}Pa`;
-
-      return [formattedDate, timeStr, temperature, humidity, pressure];
-    });
-
-  return sensorData;
 }
 
 function include(filename) {
