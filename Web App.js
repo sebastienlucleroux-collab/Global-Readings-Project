@@ -37,8 +37,17 @@ function getSensorData(sensorIndex) {
   const sensorData = data
     .filter(row => row[0] === numericIndex)
     .map(row => {
-      formatReadingRow(row);
-      return row;
+      row.shift();
+
+      const [dateStr, timeStr] = row[0].split(' ');
+      const [month, day, year] = dateStr.split('/');
+      const formattedDate = `${year}/${month.padStart(2, '0')}/${day.padStart(2, '0')}`;
+
+      const temperature = `${row[1].toFixed(1)}°C`;
+      const humidity = `${(Number(row[2].toFixed(1)) * 100).toFixed(1)}%`;
+      const pressure = (row[3] === "N/A") ? row[3] : `${row[3].toFixed(1)}Pa`;
+
+      return [formattedDate, timeStr, temperature, humidity, pressure];
     });
 
   return sensorData;
