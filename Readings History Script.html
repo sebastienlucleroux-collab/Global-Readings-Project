@@ -1,0 +1,106 @@
+<script>
+let alertInfo = [];
+let tableData = {date:"", time:"", temperature:"", humidity:"", pressure:""};
+
+function changeTableData(){
+  const param = `${Number(document.getElementById('locationSelector').value)+1}`;
+
+  google.script.run
+    .withSuccessHandler(function(result) {
+      sensorData = result;
+      tableData = sensorData.map(row => ({
+        date: row[0],
+        time: row[1],
+        temperature: row[2],
+        humidity: row[3],
+        pressure: row[4]
+      }));
+      console.log(tableData);
+      table.replaceData(tableData);
+    })
+    .withFailureHandler(function(error) {
+      console.error('Error:', error);
+    })
+    .getSensorData(param);
+}
+
+var table = new Tabulator("#example-table", {
+    data:tableData,          
+    layout:"fitColumns",
+    responsiveLayout:"hide",
+    addRowPos:"top",
+    history:true,
+    pagination:"local",
+    paginationSize:15,
+    paginationCounter:"rows",
+    movableColumns:true,
+    initialSort:[
+        {column:"date", dir:"asc"},
+    ],
+    columnDefaults:{
+        tooltip:true,
+    },
+    columns:[
+        {title:"Date", field:"date", sorter:"date", sorterParams:{
+            format:"yyyy/MM/dd",
+            alignEmptyValues:"top",
+        }},
+        {title:"Time", field:"time"},
+        {title:"Temperature", field:"temperature"},
+        {title:"Humidity", field:"humidity"},
+        {title:"Pressure", field:"pressure"},
+    ],
+});
+
+function filterData(){
+
+  google.script.run
+    .withSuccessHandler(function(result) {
+      alertInfo = result;
+      console.log(`alert info: ${alertInfo}`);
+      setCustomFilter();
+    })
+    .withFailureHandler(function(error) {
+      console.error('Error:', error);
+    })
+    .getAlertInfo();
+}
+
+function setCustomFilter() {
+  table.clearFilter();
+
+  const filterType = document.getElementById('readingFilter').value;
+  const locationIndex = Number(document.getElementById('locationSelector').value);
+
+  if (filterType === "none") return;
+
+  let customRangeFilter = null;
+
+  if (filterType === "temperature") {
+    customRangeFilter = function(data) {
+      const value = parseFloat(data.temperature);
+      const lowerBound = alertInfo[locationIndex][1];
+      const upperBound = alertInfo[locationIndex][0];
+      return value < lowerBound || value > upperBound;
+    };
+  } else if (filterType === "humidity") {
+    customRangeFilter = function(data) {
+      const value = parseFloat(data.humidity);
+      const lowerBound = alertInfo[locationIndex][3];
+      const upperBound = alertInfo[locationIndex][2];
+      return (value / 100) < lowerBound || (value / 100) > upperBound;
+    };
+  } else if (filterType === "pressure") {
+    customRangeFilter = function(data) {
+      const value = parseFloat(data.pressure);
+      const lowerBound = alertInfo[locationIndex][5];
+      const upperBound = alertInfo[locationIndex][4];
+      return value < lowerBound || value > upperBound;
+    };
+  }
+
+  if (customRangeFilter) {
+    table.setFilter(customRangeFilter);
+  }
+}
+</script>

@@ -1,0 +1,134 @@
+function getScriptUrl() {
+ var url = ScriptApp.getService().getUrl();
+ return url;
+}
+
+function doGet(e) {
+  if (!e.parameter.page) {
+    const template = HtmlService.createTemplateFromFile('Latest Readings');
+    return template.evaluate();
+  }
+    const template = HtmlService.createTemplateFromFile(e.parameter['page']);
+    return template.evaluate();
+}
+
+function getLatestData() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName('All Readings');
+  data = sheet.getRange(sheet.getLastRow(), 1, 1, sheet.getLastColumn()).getValues();
+  dataArray=data[0];
+  return dataArray;
+}
+
+
+function getSensorData(sensorIndex) {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Readings Database');
+  const data = sheet.getDataRange().getValues();
+  const sensorData = [];
+
+  for (var i = 0; i < data.length; i++) {
+    if (data[i][0] == Number(sensorIndex)) {
+      data[i].shift()
+
+      const dateTimeParts = data[i][0].split(' ');
+      const dateParts = dateTimeParts[0].split('/');
+      data[i][0] = [dateParts[2], dateParts[0].padStart(2,'0'), dateParts[1].padStart(2,'0')].join('/');
+      data[i].splice(1, 0, dateTimeParts[1]);
+
+      data[i][2] = `${(data[i][2]).toFixed(1)}°C`
+      data[i][3] = `${(Number(data[i][3].toFixed(1))*100).toFixed(1)}%`
+      data[i][4] = (data[i][4] === "N/A") ? data[i][4] : `${(data[i][4]).toFixed(1)}Pa`;
+
+      sensorData.push(data[i]);
+    }
+  }
+
+  return sensorData;
+}
+
+function include(filename) {
+  return HtmlService.createHtmlOutputFromFile(filename)
+      .getContent();
+}
+
+function getAlertInfo(){  
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Alert Info');
+  const alertRange = sheet.getRange(2, 1, 11, 9);
+  const alertInfo = alertRange.getValues();
+  for (let i = 0; i < alertInfo.length; i++){
+    const emailArray = alertInfo[i][8].split(",");
+    alertInfo[i][8] = emailArray;
+  }
+  return alertInfo;
+}
+
+function doPost(e) {
+
+  try {
+
+    // Parse JSON body from ESP32
+
+    const data = JSON.parse(e.postData.contents);
+
+ 
+
+    // (Optional) security key
+
+    const SECRET_KEY = "abc123";
+
+    if (data.key && data.key !== SECRET_KEY) {
+
+      return ContentService.createTextOutput("Unauthorized");
+
+    }
+
+ 
+
+    // Open the active spreadsheet and sheet
+
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("TempLog");
+
+ 
+
+    // Append new row with timestamp and data
+
+    sheet.appendRow([
+
+      data.unit || "",       // sensor number
+
+      new Date(),              // Timestamp
+
+      data.temperature || "",  // Temperature value
+
+      data.humidity || "" ,    // Humidity value
+
+      data.pressure || ""       // pressure value
+
+    ]);
+
+ 
+
+    // Send confirmation back to ESP32
+
+    return ContentService
+
+      .createTextOutput("Data added successfully")
+
+      .setMimeType(ContentService.MimeType.TEXT);
+
+ 
+
+  } catch (error) {
+
+    // Handle JSON or other errors
+
+    return ContentService
+
+      .createTextOutput("Error: " + error)
+
+      .setMimeType(ContentService.MimeType.TEXT);
+
+  }
+
+}
+
