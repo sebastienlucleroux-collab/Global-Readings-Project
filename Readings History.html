@@ -1,45 +1,55 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <base target="_top">
-    <link href="https://unpkg.com/tabulator-tables@6.3.1/dist/css/tabulator.min.css" rel="stylesheet">
-    <?!= include('Readings History Styles'); ?>
-  </head>
-  <body>
 
-    <div id="example-table"></div>
+<head>
+  <base target="_top">
+  <link href="https://unpkg.com/tabulator-tables@6.3.1/dist/css/tabulator.min.css" rel="stylesheet">
+  <?!= include('Readings History Styles'); ?>
+</head>
 
-    <select id="locationSelector" onchange="changeTableData()">
-      <option value="" disabled selected hidden>Select an option</option>
-      <option value="0">Pressure 1</option>
-      <option value="1">Pressure 2</option>
-      <option value="2">Pressure 3</option>
-      <option value="3">Pressure 4</option>
-      <option value="4">Pressure 5</option>
-      <option value="5">No Pressure 1</option>
-      <option value="6">No Pressure 2</option>
-      <option value="7">No Pressure 3</option>
-      <option value="8">No Pressure 4</option>
-      <option value="9">No Pressure 5</option>
-      <option value="10">No Pressure 6</option>
+<body>
+
+  <h2>Sensor Readings History</h2>
+
+  <!-- 🔄 Refresh Button -->
+  <button id="refreshDataBtn" class="refresh-btn">🔄 Refresh Data</button>
+
+  <div id="example-table"></div>
+
+  <select id="locationSelector" onchange="changeTableData()">
+    <option value="" disabled selected hidden>Select an option</option>
+    <option value="0">Pressure 1</option>
+    <option value="1">Pressure 2</option>
+    <option value="2">Pressure 3</option>
+    <option value="3">Pressure 4</option>
+    <option value="4">Pressure 5</option>
+    <option value="5">No Pressure 1</option>
+    <option value="6">No Pressure 2</option>
+    <option value="7">No Pressure 3</option>
+    <option value="8">No Pressure 4</option>
+    <option value="9">No Pressure 5</option>
+    <option value="10">No Pressure 6</option>
+  </select>
+
+  <div>
+    <p>View Anomalous Readings for</p>
+    <select id="readingFilter" onchange="filterData()">
+      <option value="none">None</option>
+      <option value="temperature">Temperature</option>
+      <option value="humidity">Humidity</option>
+      <option value="pressure">Pressure</option>
     </select>
+  </div>
 
-    <div>
-      <p>View Anomolous Readings for</p>
-      <select id="readingFilter" onchange="filterData()">
-        <option value="none">None</option>
-        <option value="temperature">Temperature</option>
-        <option value="humidity">Humidity</option>
-        <option value="pressure">Pressure</option>
-      </select>
-    </div>
+  <?var url = getScriptUrl();?>
+  <a href='<?=url?>?page=Latest Readings'>
+    <input type='button' name='button' value='Back'>
+  </a>
 
-    <?var url = getScriptUrl();?><a href='<?=url?>?page=Latest Readings'> <input type='button' name='button' value='Back'></a>
+  <script type="text/javascript" src="https://unpkg.com/tabulator-tables@6.3.1/dist/js/tabulator.min.js"></script>
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/luxon@2.3.1/build/global/luxon.min.js"></script>
 
-    <script type="text/javascript" src="https://unpkg.com/tabulator-tables@6.3.1/dist/js/tabulator.min.js"></script>
-    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/luxon@2.3.1/build/global/luxon.min.js"></script>
+  <?!= include('Readings History Script'); ?>
+</body>
 
-    <?!= include('Readings History Script'); ?>
-
-  </body>
 </html>

@@ -1,7 +1,4 @@
 <!DOCTYPE html>
-
-
-
 <html>
 
 <head>
@@ -19,19 +16,18 @@
   <div id="tableContainer">
     <table class="displayTable">
       <thead>
-        <tr class="tableRow" id="headerRow">
-          <th class="headerCell">LOCATION</th>
-          <th class="headerCell">DATE</th>
-          <th class="headerCell">TIME</th>
-          <th class="headerCell">TEMPERATURE</th>
-          <th class="headerCell">HUMIDITY</th>
-          <th class="headerCell hidden" id="pressureHeader">Pressure</th>
+        <tr id="headerRow">
+          <th>LOCATION</th>
+          <th>DATE</th>
+          <th>TIME</th>
+          <th>TEMPERATURE</th>
+          <th>HUMIDITY</th>
+          <th id="pressureHeader" class="hidden">Pressure</th>
         </tr>
       </thead>
-
       <tbody>
-        <tr class="tableRow" id="valueRow">
-          <td class="valueCell" id="locationCell">
+        <tr id="valueRow">
+          <td id="locationCell">
             <select id="locationSelector" onchange="updateTable()">
               <option value="" disabled selected hidden>Select an option</option>
               <option value="0">Pressure 1</option>
@@ -47,25 +43,25 @@
               <option value="10">No Pressure 6</option>
             </select>
           </td>
-          <td class="valueCell" id="dateCell"></td>
-          <td class="valueCell" id="timeCell"></td>
-          <td class="valueCell" id="temperatureCell"></td>
-          <td class="valueCell" id="humidityCell"></td>
-          <td class="valueCell hidden" id="pressureCell"></td>
+          <td id="dateCell"></td>
+          <td id="timeCell"></td>
+          <td id="temperatureCell"></td>
+          <td id="humidityCell"></td>
+          <td id="pressureCell" class="hidden"></td>
         </tr>
       </tbody>
     </table>
   </div>
+
+  <!-- 🔄 Refresh Button -->
+  <button id="refreshDataBtn" class="refresh-btn">🔄 Refresh Data</button>
 
   <?var url = getScriptUrl();?>
   <a href='<?=url?>?page=Readings History'>
     <input type='button' name='button' value='See Full History'>
   </a>
 
-  <button id="refreshDataBtn" class="refresh-btn">🔄 Refresh Data</button>
-
   <?!= include('Latest Readings Script'); ?>
-
 </body>
 
 </html>
