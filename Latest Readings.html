@@ -3,12 +3,14 @@
 
 <head>
   <base target="_top">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- ✅ Include only your own styles, not Tabulator -->
   <?!= include('Latest Readings Styles'); ?>
 </head>
 
 <body>
   <div id="titleContainer">
-    <img src="https://lh3.googleusercontent.com/d/1tGsWBxiVM7UU40rY4osll8xZ8d_KXjlG=w886-h591" alt="My Picture"
+    <img src="https://lh3.googleusercontent.com/d/1tGsWBxiVM7UU40rY4osll8xZ8d_KXjlG=w886-h591" alt="Company Logo"
       id="globalLogo">
     <p id="pageTitle">Global Manufacturing Solutions Environmental Readings</p>
   </div>
@@ -22,7 +24,7 @@
           <th>TIME</th>
           <th>TEMPERATURE</th>
           <th>HUMIDITY</th>
-          <th id="pressureHeader" class="hidden">Pressure</th>
+          <th id="pressureHeader" class="hidden">PRESSURE</th>
         </tr>
       </thead>
       <tbody>
@@ -56,9 +58,10 @@
   <!-- 🔄 Refresh Button -->
   <button id="refreshDataBtn" class="refresh-btn">🔄 Refresh Data</button>
 
+  <!-- ↩ Back / History Button -->
   <?var url = getScriptUrl();?>
-  <a href='<?=url?>?page=Readings History'>
-    <input type='button' name='button' value='See Full History'>
+  <a href="<?=url?>?page=Readings History">
+    <input type="button" name="button" value="See Full History">
   </a>
 
   <?!= include('Latest Readings Script'); ?>

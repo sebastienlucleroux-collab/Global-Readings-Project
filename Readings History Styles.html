@@ -1,3 +1,101 @@
 <style>
+  body {
+    font-family: Arial;
+    background-color: rgb(157, 157, 157);
+    margin: 0;
+    padding: 20px;
+  }
 
+  #titleContainer {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    font-size: 40px;
+    margin-bottom: 20px;
+  }
+
+  #globalLogo {
+    height: 250px;
+  }
+
+  /* Center and size the table area */
+  #example-table {
+    margin: 60px auto 40px auto;
+    width: 90%;
+    max-width: 1200px;
+    background-color: white;
+    border: 1px solid black;
+    border-radius: 6px;
+  }
+
+  /* Override Tabulator’s default colors */
+  .tabulator {
+    border: 1px solid black !important;
+    font-size: 18px !important;
+    background-color: white !important;
+  }
+
+  .tabulator .tabulator-header {
+    background-color: #e9f2fb !important;
+    font-weight: bold !important;
+    font-size: 20px !important;
+  }
+
+  .tabulator-row:nth-child(even) {
+    background-color: #f9fbfd !important;
+  }
+
+  .tabulator-cell {
+    border: 1px solid #ccc !important;
+    text-align: center !important;
+    padding: 10px !important;
+  }
+
+  /* Dropdowns */
+  #locationSelector,
+  #readingFilter {
+    font-size: 24px;
+    padding: 8px 10px;
+    border: 1px solid #000;
+    border-radius: 4px;
+    margin: 10px;
+  }
+
+  /* Buttons */
+  .refresh-btn,
+  input[type="button"] {
+    background-color: #0077cc;
+    color: white;
+    border: none;
+    padding: 10px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    font-size: 18px;
+  }
+
+  .refresh-btn:hover,
+  input[type="button"]:hover {
+    background-color: #005fa3;
+  }
+
+  p {
+    font-size: 24px;
+    margin: 10px;
+  }
+
+  @media (max-width: 900px) {
+    #example-table {
+      width: 100%;
+    }
+
+    .tabulator {
+      font-size: 14px !important;
+    }
+
+    #locationSelector,
+    #readingFilter {
+      font-size: 18px;
+    }
+  }
 </style>
