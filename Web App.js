@@ -29,6 +29,69 @@ function doGet(e) {
   return template.evaluate();
 }
 
+function getAllSensorData() {
+  const sheet = getSheet('Readings Database');
+  const data = sheet.getDataRange().getValues();
+  const result = {};
+
+  data.forEach(row => {
+    const sensorIndex = row[0];
+    if (!result[sensorIndex]) result[sensorIndex] = [];
+
+    row.shift();
+    const [dateStr, timeStr] = row[0].split(' ');
+    const [month, day, year] = dateStr.split('/');
+    const formattedDate = `${year}/${month.padStart(2, '0')}/${day.padStart(2, '0')}`;
+
+    result[sensorIndex].push([
+      formattedDate,
+      timeStr,
+      `${row[1].toFixed(1)}°C`,
+      `${(Number(row[2].toFixed(1)) * 100).toFixed(1)}%`,
+      row[3] === "N/A" ? row[3] : `${row[3].toFixed(1)}Pa`
+    ]);
+  });
+
+  return result;
+}
+
+function getLatestSensorData() {
+  const sheet = getSheet('Readings Database');
+  const data = sheet.getDataRange().getValues();
+
+  // Object to store the latest reading per sensor
+  const latest = {};
+
+  data.forEach(row => {
+    const sensorIndex = row[0];
+    const timestamp = new Date(row[1]);
+
+    if (!latest[sensorIndex] || timestamp > latest[sensorIndex].timestamp) {
+      const [dateStr, timeStr] = Utilities.formatDate(timestamp, Session.getScriptTimeZone(), "MM/dd/yyyy HH:mm").split(' ');
+      const [month, day, year] = dateStr.split('/');
+
+      latest[sensorIndex] = {
+        timestamp,
+        reading: [
+          `${year}/${month.padStart(2, '0')}/${day.padStart(2, '0')}`,
+          timeStr,
+          `${row[2].toFixed(1)}°C`,
+          `${(Number(row[3].toFixed(1)) * 100).toFixed(1)}%`,
+          row[4] === "N/A" ? row[4] : `${row[4].toFixed(1)}Pa`
+        ]
+      };
+    }
+  });
+
+  // Return just the readings (not the timestamps)
+  const result = {};
+  Object.keys(latest).forEach(index => {
+    result[index] = latest[index].reading;
+  });
+
+  return result;
+}
+
 function getSensorData(sensorIndex) {
   const sheet = getSheet('Readings Database');
   const data = sheet.getDataRange().getValues();

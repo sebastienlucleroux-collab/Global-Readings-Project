@@ -1,43 +1,103 @@
 <script>
+  /*
+    var sensorData = [];
+    var lastReading = [];
+  
+    function updateTable() {
+      const param = `${Number(document.getElementById('locationSelector').value) + 1}`;
+  
+      google.script.run
+        .withSuccessHandler(function (result) {
+          sensorData = result;
+          lastReading = sensorData[sensorData.length - 1];
+          insertValues();
+        })
+        .withFailureHandler(function (error) {
+          console.error('Error:', error);
+        })
+        .getSensorData(param);
+  
+  
+    }
+  
+    function insertValues() {
+      document.getElementById('dateCell').textContent = lastReading[0];
+      document.getElementById('timeCell').textContent = lastReading[1];
+      document.getElementById('temperatureCell').textContent = lastReading[2];
+      document.getElementById('humidityCell').textContent = lastReading[3];
+  
+      const pressureHeader = document.getElementById('pressureHeader');
+      const pressureCell = document.getElementById('pressureCell');
+  
+      if (lastReading[4] !== "N/A") {
+        pressureHeader.classList.remove('hidden');
+        pressureCell.classList.remove('hidden');
+        pressureCell.textContent = lastReading[4];
+      } else {
+        pressureHeader.classList.add('hidden');
+        pressureCell.classList.add('hidden');
+        pressureCell.textContent = '';
+      }
+    }
+  */
 
-  var sensorData = [];
-  var lastReading = [];
+  let latestData = {};
+  let allData = null;
 
-  function updateTable() {
-    const param = `${Number(document.getElementById('locationSelector').value) + 1}`;
-
+  window.onload = function () {
+    // Load latest readings quickly
     google.script.run
       .withSuccessHandler(function (result) {
-        sensorData = result;
-        lastReading = sensorData[sensorData.length - 1];
-        insertValues();
+        latestData = result;
+        console.log('Latest readings loaded:', latestData);
+        // Start background loading of full history
+        preloadAllData();
+      })
+      .withFailureHandler(console.error)
+      .getLatestSensorData();
+  };
+
+  function preloadAllData() {
+    console.log("Preloading all sensor history...");
+    google.script.run
+      .withSuccessHandler(function (result) {
+        allData = result;
+        sessionStorage.setItem("allSensorData", JSON.stringify(result));
+        console.log("All history preloaded!");
       })
       .withFailureHandler(function (error) {
-        console.error('Error:', error);
+        console.error("Background preload failed:", error);
       })
-      .getSensorData(param);
-
-
+      .getAllSensorData();
   }
 
-  function insertValues() {
-    document.getElementById('dateCell').textContent = lastReading[0];
-    document.getElementById('timeCell').textContent = lastReading[1];
-    document.getElementById('temperatureCell').textContent = lastReading[2];
-    document.getElementById('humidityCell').textContent = lastReading[3];
+  function updateTable() {
+    const index = document.getElementById('locationSelector').value;
+    const lastReading = latestData[index];
+    if (!lastReading) return;
+    insertValues(lastReading);
+  }
+
+  function insertValues(reading) {
+    const [date, time, temp, hum, press] = reading;
+    document.getElementById('dateCell').textContent = date;
+    document.getElementById('timeCell').textContent = time;
+    document.getElementById('temperatureCell').textContent = temp;
+    document.getElementById('humidityCell').textContent = hum;
 
     const pressureHeader = document.getElementById('pressureHeader');
     const pressureCell = document.getElementById('pressureCell');
 
-    if (lastReading[4] !== "N/A") {
+    if (press !== "N/A") {
       pressureHeader.classList.remove('hidden');
       pressureCell.classList.remove('hidden');
-      pressureCell.textContent = lastReading[4];
+      pressureCell.textContent = press;
     } else {
       pressureHeader.classList.add('hidden');
       pressureCell.classList.add('hidden');
       pressureCell.textContent = '';
     }
   }
+</script>
 
 </script>
