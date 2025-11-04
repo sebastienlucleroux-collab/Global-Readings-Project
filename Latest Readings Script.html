@@ -1,64 +1,45 @@
 <script>
-  
-var sensorData = [];
-var lastReading = [];
 
-function updateTable(){
-  const param = `${Number(document.getElementById('locationSelector').value)+1}`;
+  var sensorData = [];
+  var lastReading = [];
 
-  google.script.run
-    .withSuccessHandler(function(result) {
-      sensorData = result;
-      lastReading = sensorData[sensorData.length-1];
-      console.log(lastReading)
+  function updateTable() {
+    const param = `${Number(document.getElementById('locationSelector').value) + 1}`;
 
-      pressureHeading();
-      insertValues();
-    })
-    .withFailureHandler(function(error) {
-      console.error('Error:', error);
-    })
-    .getSensorData(param);
-  
-  
-}
+    google.script.run
+      .withSuccessHandler(function (result) {
+        sensorData = result;
+        lastReading = sensorData[sensorData.length - 1];
+        console.log(lastReading);
 
-const pressureHeader = document.createElement('th');
-pressureHeader.textContent = 'PRESSURE';
-const pressureCell = document.createElement('td');
-pressureCell.classList.add("valueCell");
+        insertValues();
+      })
+      .withFailureHandler(function (error) {
+        console.error('Error:', error);
+      })
+      .getSensorData(param);
 
-function pressureHeading() {
-  const headerRow = document.getElementById('headerRow');
-  const lastHeaderCell = headerRow.lastElementChild;
-  
-  if (lastReading[4] !== "N/A" && headerRow.cells.length === 5) {
-    headerRow.appendChild(pressureHeader);
-  } else if (lastReading[4] === "N/A" && headerRow.cells.length === 6) {
-    headerRow.removeChild(lastHeaderCell);
+
   }
-}
 
-function insertPressureValues() {
-  const valueRow = document.getElementById('valueRow');
-  const lastValueCell = valueRow.lastElementChild;
+  function insertValues() {
+    document.getElementById('dateCell').textContent = lastReading[0];
+    document.getElementById('timeCell').textContent = lastReading[1];
+    document.getElementById('temperatureCell').textContent = lastReading[2];
+    document.getElementById('humidityCell').textContent = lastReading[3];
 
-  if (lastReading[4] !== "N/A") {
-    pressureCell.textContent = `${lastReading[4]}`;
-    if (valueRow.cells.length === 5) {
-      valueRow.appendChild(pressureCell);
+    const pressureHeader = document.getElementById('pressureHeader');
+    const pressureCell = document.getElementById('pressureCell');
+
+    if (lastReading[4] !== "N/A") {
+      pressureHeader.classList.remove('hidden');
+      pressureCell.classList.remove('hidden');
+      pressureCell.textContent = lastReading[4];
+    } else {
+      pressureHeader.classList.add('hidden');
+      pressureCell.classList.add('hidden');
+      pressureCell.textContent = '';
     }
-  } else if (lastReading[4] === "N/A" && valueRow.cells.length === 6) {
-    valueRow.removeChild(lastValueCell);
   }
-}
-
-function insertValues() {
-  document.getElementById('dateCell').textContent = lastReading[0];
-  document.getElementById('timeCell').textContent = lastReading[1];
-  document.getElementById('temperatureCell').textContent = lastReading[2];
-  document.getElementById('humidityCell').textContent = lastReading[3];
-  insertPressureValues();
-}
 
 </script>

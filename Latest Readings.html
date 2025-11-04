@@ -11,7 +11,8 @@
 
 <body>
   <div id="titleContainer">
-    <img src="https://lh3.googleusercontent.com/d/1tGsWBxiVM7UU40rY4osll8xZ8d_KXjlG=w886-h591" alt="My Picture" id="globalLogo">
+    <img src="https://lh3.googleusercontent.com/d/1tGsWBxiVM7UU40rY4osll8xZ8d_KXjlG=w886-h591" alt="My Picture"
+      id="globalLogo">
     <p id="pageTitle">Global Manufacturing Solutions Environmental Readings</p>
   </div>
 
@@ -24,6 +25,7 @@
           <th class="headerCell">TIME</th>
           <th class="headerCell">TEMPERATURE</th>
           <th class="headerCell">HUMIDITY</th>
+          <th class="headerCell hidden" id="pressureHeader">Pressure</th>
         </tr>
       </thead>
 
@@ -31,7 +33,6 @@
         <tr class="tableRow" id="valueRow">
           <td class="valueCell" id="locationCell">
             <select id="locationSelector" onchange="updateTable()">
-              //Change depending on Number and Name of Locations
               <option value="" disabled selected hidden>Select an option</option>
               <option value="0">Pressure 1</option>
               <option value="1">Pressure 2</option>
@@ -50,6 +51,7 @@
           <td class="valueCell" id="timeCell"></td>
           <td class="valueCell" id="temperatureCell"></td>
           <td class="valueCell" id="humidityCell"></td>
+          <td class="valueCell hidden" id="pressureCell"></td>
         </tr>
       </tbody>
     </table>
