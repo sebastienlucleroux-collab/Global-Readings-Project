@@ -79,6 +79,33 @@
       .getAllSensorData();
   }
 
+  document.addEventListener("DOMContentLoaded", function () {
+    const refreshBtn = document.getElementById("refreshDataBtn");
+    if (refreshBtn) {
+      refreshBtn.addEventListener("click", function () {
+        console.log("Manual refresh triggered (Latest Readings)...");
+        refreshBtn.textContent = "Refreshing...";
+        refreshBtn.disabled = true;
+
+        google.script.run
+          .withSuccessHandler(function (result) {
+            latestData = result;
+            sessionStorage.setItem("latestSensorData", JSON.stringify(result));
+            updateTable();
+            refreshBtn.textContent = "🔄 Refresh Data";
+            refreshBtn.disabled = false;
+            console.log("Latest data refreshed!");
+          })
+          .withFailureHandler(function (error) {
+            console.error("Refresh failed:", error);
+            refreshBtn.textContent = "🔄 Refresh Data";
+            refreshBtn.disabled = false;
+          })
+          .getLatestSensorData();
+      });
+    }
+  });
+
   // ---------------------------
   // UPDATE TABLE DISPLAY
   // ---------------------------
