@@ -1,42 +1,70 @@
 <script>
-
-  const params = new URLSearchParams(window.location.search);
-  const qrSensor = params.get("sensor");
-  if (qrSensor !== null) {
-    sessionStorage.setItem("selectedSensor", qrSensor);
-  }
-
-  window.addEventListener("DOMContentLoaded", () => {
-    const savedSensor = sessionStorage.getItem("selectedSensor");
-    if (savedSensor !== null) {
-      const selector = document.getElementById("locationSelector");
-      selector.value = savedSensor;
-      updateTable();
-    }
-    document.getElementById("locationSelector").addEventListener("change", (e) => {
-      sessionStorage.setItem("selectedSensor", e.target.value);
-    });
-  });
-
+  // ---------------------------
+  // GLOBAL VARIABLES
+  // ---------------------------
   let latestData = {};
   let allData = null;
 
-  window.onload = function () {
+  // ---------------------------
+  // ON DOM READY
+  // ---------------------------
+  document.addEventListener("DOMContentLoaded", function () {
+    console.log("DOM ready — setting up Latest Readings...");
+
+    const params = new URLSearchParams(window.location.search);
+    const qrSensor = params.get("sensor");
+
+    // If QR code specifies sensor → store it
+    if (qrSensor !== null) {
+      sessionStorage.setItem("selectedSensor", qrSensor);
+    }
+
+    // Restore saved sensor selection
+    const savedSensor = sessionStorage.getItem("selectedSensor");
+    const selector = document.getElementById("locationSelector");
+    if (selector) {
+      if (savedSensor !== null) selector.value = savedSensor;
+      selector.addEventListener("change", (e) => {
+        sessionStorage.setItem("selectedSensor", e.target.value);
+        updateTable();
+      });
+    }
+
+    // Fetch latest readings once DOM is ready
+    loadLatestReadings();
+  });
+
+  // ---------------------------
+  // LOAD LATEST READINGS
+  // ---------------------------
+  function loadLatestReadings() {
+    console.log("Fetching latest readings...");
+
     google.script.run
       .withSuccessHandler(function (result) {
         latestData = result;
+        console.log("Latest readings loaded:", latestData);
+
+        // Start background loading of full history
         preloadAllData();
-        const sensorParam = getQueryParam('sensor');
-        if (sensorParam !== null && latestData[sensorParam]) {
-          const selector = document.getElementById('locationSelector');
-          selector.value = sensorParam;
+
+        // Display current or QR-selected sensor data
+        const selectedSensor = sessionStorage.getItem("selectedSensor");
+        if (selectedSensor !== null && latestData[selectedSensor]) {
           updateTable();
+        } else {
+          console.log("No saved sensor or data yet, waiting for user selection.");
         }
       })
-      .withFailureHandler(console.error)
+      .withFailureHandler(function (error) {
+        console.error("Error loading latest readings:", error);
+      })
       .getLatestSensorData();
-  };
+  }
 
+  // ---------------------------
+  // PRELOAD ALL SENSOR HISTORY
+  // ---------------------------
   function preloadAllData() {
     console.log("Preloading all sensor history...");
     google.script.run
@@ -51,38 +79,50 @@
       .getAllSensorData();
   }
 
+  // ---------------------------
+  // UPDATE TABLE DISPLAY
+  // ---------------------------
   function updateTable() {
-    const index = document.getElementById('locationSelector').value;
+    const selector = document.getElementById("locationSelector");
+    if (!selector) {
+      console.warn("Location selector not found!");
+      return;
+    }
+
+    const index = selector.value;
     sessionStorage.setItem("selectedSensor", index);
+
     const lastReading = latestData[index];
-    if (!lastReading) return;
+    if (!lastReading) {
+      console.warn(`No reading found for sensor index ${index}`);
+      return;
+    }
+
     insertValues(lastReading);
   }
 
+  // ---------------------------
+  // INSERT VALUES INTO DOM
+  // ---------------------------
   function insertValues(reading) {
     const [date, time, temp, hum, press] = reading;
-    document.getElementById('dateCell').textContent = date;
-    document.getElementById('timeCell').textContent = time;
-    document.getElementById('temperatureCell').textContent = temp;
-    document.getElementById('humidityCell').textContent = hum;
 
-    const pressureHeader = document.getElementById('pressureHeader');
-    const pressureCell = document.getElementById('pressureCell');
+    document.getElementById("dateCell").textContent = date || "N/A";
+    document.getElementById("timeCell").textContent = time || "N/A";
+    document.getElementById("temperatureCell").textContent = temp || "N/A";
+    document.getElementById("humidityCell").textContent = hum || "N/A";
 
-    if (press !== "N/A") {
-      pressureHeader.classList.remove('hidden');
-      pressureCell.classList.remove('hidden');
+    const pressureHeader = document.getElementById("pressureHeader");
+    const pressureCell = document.getElementById("pressureCell");
+
+    if (press && press !== "N/A") {
+      pressureHeader.classList.remove("hidden");
+      pressureCell.classList.remove("hidden");
       pressureCell.textContent = press;
     } else {
-      pressureHeader.classList.add('hidden');
-      pressureCell.classList.add('hidden');
-      pressureCell.textContent = '';
+      pressureHeader.classList.add("hidden");
+      pressureCell.classList.add("hidden");
+      pressureCell.textContent = "";
     }
   }
-
-  function getQueryParam(name) {
-    const params = new URLSearchParams(window.location.search);
-    return params.get(name);
-  }
-
 </script>

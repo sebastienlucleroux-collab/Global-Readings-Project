@@ -1,11 +1,19 @@
 <script>
+  // ---------------------------
+  // GLOBAL VARIABLES
+  // ---------------------------
   let alertInfo = [];
   let tableData = [];
+  let table; // ✅ Global so all functions can access it
 
+  // ---------------------------
+  // INITIAL SETUP
+  // ---------------------------
   document.addEventListener("DOMContentLoaded", function () {
     console.log("DOM ready — setting up Tabulator...");
 
-    var table = new Tabulator("#example-table", {
+    // Initialize Tabulator once
+    table = new Tabulator("#example-table", {
       data: [],
       layout: "fitColumns",
       responsiveLayout: "hide",
@@ -31,19 +39,28 @@
       ],
     });
 
+    // Restore selected sensor (if any)
     const savedSensor = sessionStorage.getItem("selectedSensor");
     if (savedSensor !== null) {
       const selector = document.getElementById("locationSelector");
       if (selector) selector.value = savedSensor;
     }
 
+    // Populate initial data
     changeTableData();
   });
 
-
-
+  // ---------------------------
+  // UPDATE TABLE DATA
+  // ---------------------------
   function changeTableData() {
-    const index = document.getElementById('locationSelector').value;
+    const selector = document.getElementById("locationSelector");
+    if (!selector) {
+      console.warn("Location selector not found!");
+      return;
+    }
+
+    const index = selector.value;
     const cached = sessionStorage.getItem("allSensorData");
 
     if (cached) {
@@ -56,15 +73,16 @@
           time: row[1],
           temperature: row[2],
           humidity: row[3],
-          pressure: row[4]
+          pressure: row[4],
         }));
         table.replaceData(tableData);
         return;
       }
     }
 
+    // Fallback if cache isn’t ready
     console.log("Cache not available yet, fetching from server...");
-    document.querySelector("#example-table").innerHTML = "<p>Loading data...</p>";
+    table.replaceData([]); // clear old data safely
 
     google.script.run
       .withSuccessHandler(function (result) {
@@ -73,7 +91,7 @@
           time: row[1],
           temperature: row[2],
           humidity: row[3],
-          pressure: row[4]
+          pressure: row[4],
         }));
         table.replaceData(tableData);
       })
@@ -81,7 +99,14 @@
       .getSensorData(index);
   }
 
+  // ---------------------------
+  // FETCH ALERT INFO & FILTER
+  // ---------------------------
   function filterData() {
+    if (!table) {
+      console.warn("Table not ready yet — cannot apply filter.");
+      return;
+    }
 
     google.script.run
       .withSuccessHandler(function (result) {
@@ -89,16 +114,21 @@
         setCustomFilter();
       })
       .withFailureHandler(function (error) {
-        console.error('Error:', error);
+        console.error("Error fetching alert info:", error);
       })
       .getAlertInfo();
   }
 
   function setCustomFilter() {
+    if (!table) {
+      console.warn("Table not initialized — skipping filter.");
+      return;
+    }
+
     table.clearFilter();
 
-    const filterType = document.getElementById('readingFilter').value;
-    const locationIndex = Number(document.getElementById('locationSelector').value);
+    const filterType = document.getElementById("readingFilter").value;
+    const locationIndex = Number(document.getElementById("locationSelector").value);
 
     if (filterType === "none") return;
 
