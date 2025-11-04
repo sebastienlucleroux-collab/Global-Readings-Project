@@ -1,3 +1,20 @@
+function getSheet(name) {
+  return SpreadsheetApp.getActiveSpreadsheet().getSheetByName(name);
+}
+
+function formatReadingRow(row) {
+  row.shift();
+  const [dateStr, timeStr] = row[0].split(' ');
+  const [month, day, year] = dateStr.split('/');
+  return {
+    date: `${year}/${month.padStart(2, '0')}/${day.padStart(2, '0')}`,
+    time: timeStr,
+    temperature: `${row[1].toFixed(1)}°C`,
+    humidity: `${(Number(row[2].toFixed(1)) * 100).toFixed(1)}%`,
+    pressure: row[3] === "N/A" ? row[3] : `${row[3].toFixed(1)}Pa`
+  };
+}
+
 function getScriptUrl() {
   var url = ScriptApp.getService().getUrl();
   return url;
@@ -12,33 +29,16 @@ function doGet(e) {
   return template.evaluate();
 }
 
-function getLatestData() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName('All Readings');
-  data = sheet.getRange(sheet.getLastRow(), 1, 1, sheet.getLastColumn()).getValues();
-  dataArray = data[0];
-  return dataArray;
-}
-
 function getSensorData(sensorIndex) {
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Readings Database');
+  const sheet = getSheet('Readings Database');
   const data = sheet.getDataRange().getValues();
   const numericIndex = Number(sensorIndex);
 
   const sensorData = data
     .filter(row => row[0] === numericIndex)
     .map(row => {
-      row.shift(); // remove sensor index
-
-      const [dateStr, timeStr] = row[0].split(' ');
-      const [month, day, year] = dateStr.split('/');
-      const formattedDate = `${year}/${month.padStart(2, '0')}/${day.padStart(2, '0')}`;
-
-      const temperature = `${row[1].toFixed(1)}°C`;
-      const humidity = `${(Number(row[2].toFixed(1)) * 100).toFixed(1)}%`;
-      const pressure = (row[3] === "N/A") ? row[3] : `${row[3].toFixed(1)}Pa`;
-
-      return [formattedDate, timeStr, temperature, humidity, pressure];
+      formatReadingRow(row);
+      return row;
     });
 
   return sensorData;
@@ -77,7 +77,7 @@ function include(filename) {
 }
 
 function getAlertInfo() {
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Alert Info');
+  const sheet = getSheet('Alert Info');
   const alertRange = sheet.getRange(2, 1, 11, 9);
   const alertInfo = alertRange.getValues();
   for (let i = 0; i < alertInfo.length; i++) {
@@ -111,7 +111,7 @@ function doPost(e) {
 
     // Open the active spreadsheet and sheet
 
-    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("TempLog");
+    const sheet = getSheet("Readings Database");
 
 
 
