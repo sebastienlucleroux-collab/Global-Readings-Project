@@ -1,6 +1,6 @@
 function getScriptUrl() {
- var url = ScriptApp.getService().getUrl();
- return url;
+  var url = ScriptApp.getService().getUrl();
+  return url;
 }
 
 function doGet(e) {
@@ -8,19 +8,43 @@ function doGet(e) {
     const template = HtmlService.createTemplateFromFile('Latest Readings');
     return template.evaluate();
   }
-    const template = HtmlService.createTemplateFromFile(e.parameter['page']);
-    return template.evaluate();
+  const template = HtmlService.createTemplateFromFile(e.parameter['page']);
+  return template.evaluate();
 }
 
 function getLatestData() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName('All Readings');
   data = sheet.getRange(sheet.getLastRow(), 1, 1, sheet.getLastColumn()).getValues();
-  dataArray=data[0];
+  dataArray = data[0];
   return dataArray;
 }
 
+function getSensorData(sensorIndex) {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Readings Database');
+  const data = sheet.getDataRange().getValues();
+  const numericIndex = Number(sensorIndex);
 
+  const sensorData = data
+    .filter(row => row[0] === numericIndex)
+    .map(row => {
+      row.shift(); // remove sensor index
+
+      const [dateStr, timeStr] = row[0].split(' ');
+      const [month, day, year] = dateStr.split('/');
+      const formattedDate = `${year}/${month.padStart(2, '0')}/${day.padStart(2, '0')}`;
+
+      const temperature = `${row[1].toFixed(1)}°C`;
+      const humidity = `${(Number(row[2].toFixed(1)) * 100).toFixed(1)}%`;
+      const pressure = (row[3] === "N/A") ? row[3] : `${row[3].toFixed(1)}Pa`;
+
+      return [formattedDate, timeStr, temperature, humidity, pressure];
+    });
+
+  return sensorData;
+}
+
+/*
 function getSensorData(sensorIndex) {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Readings Database');
   const data = sheet.getDataRange().getValues();
@@ -45,17 +69,18 @@ function getSensorData(sensorIndex) {
 
   return sensorData;
 }
+*/
 
 function include(filename) {
   return HtmlService.createHtmlOutputFromFile(filename)
-      .getContent();
+    .getContent();
 }
 
-function getAlertInfo(){  
+function getAlertInfo() {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Alert Info');
   const alertRange = sheet.getRange(2, 1, 11, 9);
   const alertInfo = alertRange.getValues();
-  for (let i = 0; i < alertInfo.length; i++){
+  for (let i = 0; i < alertInfo.length; i++) {
     const emailArray = alertInfo[i][8].split(",");
     alertInfo[i][8] = emailArray;
   }
@@ -70,7 +95,7 @@ function doPost(e) {
 
     const data = JSON.parse(e.postData.contents);
 
- 
+
 
     // (Optional) security key
 
@@ -82,13 +107,13 @@ function doPost(e) {
 
     }
 
- 
+
 
     // Open the active spreadsheet and sheet
 
     const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("TempLog");
 
- 
+
 
     // Append new row with timestamp and data
 
@@ -100,13 +125,13 @@ function doPost(e) {
 
       data.temperature || "",  // Temperature value
 
-      data.humidity || "" ,    // Humidity value
+      data.humidity || "",    // Humidity value
 
       data.pressure || ""       // pressure value
 
     ]);
 
- 
+
 
     // Send confirmation back to ESP32
 
@@ -116,7 +141,7 @@ function doPost(e) {
 
       .setMimeType(ContentService.MimeType.TEXT);
 
- 
+
 
   } catch (error) {
 
