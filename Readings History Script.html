@@ -1,4 +1,18 @@
 <script>
+
+  document.addEventListener("DOMContentLoaded", () => {
+    const savedSensor = sessionStorage.getItem("selectedSensor");
+    if (savedSensor !== null) {
+      const selector = document.getElementById("locationSelector");
+      selector.value = savedSensor;
+      changeTableData();
+    }
+
+    document.getElementById("locationSelector").addEventListener("change", (e) => {
+      sessionStorage.setItem("selectedSensor", e.target.value);
+    });
+  });
+
   let alertInfo = [];
   let tableData = [];
 
@@ -76,7 +90,6 @@
     google.script.run
       .withSuccessHandler(function (result) {
         alertInfo = result;
-        console.log(`alert info: ${alertInfo}`);
         setCustomFilter();
       })
       .withFailureHandler(function (error) {

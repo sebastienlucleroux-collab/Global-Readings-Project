@@ -1,5 +1,22 @@
 <script>
 
+  const params = new URLSearchParams(window.location.search);
+  const qrSensor = params.get("sensor");
+  if (qrSensor !== null) {
+    sessionStorage.setItem("selectedSensor", qrSensor);
+  }
+
+  window.addEventListener("DOMContentLoaded", () => {
+    const savedSensor = sessionStorage.getItem("selectedSensor");
+    if (savedSensor !== null) {
+      const selector = document.getElementById("locationSelector");
+      selector.value = savedSensor;
+      updateTable();
+    }
+    document.getElementById("locationSelector").addEventListener("change", (e) => {
+      sessionStorage.setItem("selectedSensor", e.target.value);
+    });
+  });
 
   let latestData = {};
   let allData = null;
@@ -9,7 +26,10 @@
       .withSuccessHandler(function (result) {
         latestData = result;
         preloadAllData();
-        if (document.getElementById('locationSelector').value) {
+        const sensorParam = getQueryParam('sensor');
+        if (sensorParam !== null && latestData[sensorParam]) {
+          const selector = document.getElementById('locationSelector');
+          selector.value = sensorParam;
           updateTable();
         }
       })
@@ -33,6 +53,7 @@
 
   function updateTable() {
     const index = document.getElementById('locationSelector').value;
+    sessionStorage.setItem("selectedSensor", index);
     const lastReading = latestData[index];
     if (!lastReading) return;
     insertValues(lastReading);
@@ -58,4 +79,10 @@
       pressureCell.textContent = '';
     }
   }
+
+  function getQueryParam(name) {
+    const params = new URLSearchParams(window.location.search);
+    return params.get(name);
+  }
+
 </script>
