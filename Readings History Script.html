@@ -1,18 +1,34 @@
 <script>
-  // ---------------------------
-  // GLOBAL VARIABLES
-  // ---------------------------
   let alertInfo = [];
   let tableData = [];
-  let table; // ✅ Global so all functions can access it
+  let table;
 
-  // ---------------------------
-  // INITIAL SETUP
-  // ---------------------------
-  document.addEventListener("DOMContentLoaded", function () {
-    console.log("DOM ready — setting up Tabulator...");
+  // ✅ Wait until DOM + container is actually ready
+  document.addEventListener("DOMContentLoaded", () => {
+    console.log("DOM loaded — waiting for #example-table to exist...");
+    waitForElement("#example-table", initializeTabulator);
+  });
 
-    window.table = new Tabulator("#example-table", {
+  function waitForElement(selector, callback) {
+    const el = document.querySelector(selector);
+    if (el) {
+      callback(el);
+      return;
+    }
+    const observer = new MutationObserver((mutations, obs) => {
+      const element = document.querySelector(selector);
+      if (element) {
+        obs.disconnect();
+        callback(element);
+      }
+    });
+    observer.observe(document, { childList: true, subtree: true });
+  }
+
+  // ✅ Initialize Tabulator safely
+  function initializeTabulator(el) {
+    console.log("Initializing Tabulator...");
+    table = new Tabulator(el, {
       data: [],
       layout: "fitColumns",
       responsiveLayout: "hide",
@@ -33,48 +49,56 @@
       ],
     });
 
+    setupEventListeners();
+    restoreSensorSelection();
+    changeTableData();
+  }
+
+  function setupEventListeners() {
+    console.log("Setting up event listeners...");
     const refreshBtn = document.getElementById("refreshDataBtn");
     if (refreshBtn) {
-      refreshBtn.addEventListener("click", function () {
-        console.log("Manual refresh triggered (History)...");
-
-        refreshBtn.textContent = "Refreshing...";
-        refreshBtn.disabled = true;
-
-        google.script.run
-          .withSuccessHandler(function (result) {
-            allData = result;
-            sessionStorage.setItem("allSensorData", JSON.stringify(result));
-            console.log("History data refreshed!");
-            changeTableData(); // refresh table view
-            refreshBtn.textContent = "🔄 Refresh Data";
-            refreshBtn.disabled = false;
-          })
-          .withFailureHandler(function (error) {
-            console.error("Refresh failed:", error);
-            refreshBtn.textContent = "🔄 Refresh Data";
-            refreshBtn.disabled = false;
-          })
-          .getAllSensorData();
-      });
+      refreshBtn.addEventListener("click", handleRefresh);
     }
 
-    // Restore previous sensor selection (from QR/session)
+    const selector = document.getElementById("locationSelector");
+    if (selector) {
+      selector.addEventListener("change", () => {
+        console.log("Sensor changed — updating table...");
+        sessionStorage.setItem("selectedSensor", selector.value);
+        changeTableData();
+      });
+    }
+  }
+
+  function handleRefresh() {
+    const refreshBtn = document.getElementById("refreshDataBtn");
+    refreshBtn.textContent = "Refreshing...";
+    refreshBtn.disabled = true;
+
+    google.script.run
+      .withSuccessHandler((result) => {
+        sessionStorage.setItem("allSensorData", JSON.stringify(result));
+        console.log("Data refreshed.");
+        changeTableData();
+        refreshBtn.textContent = "🔄 Refresh Data";
+        refreshBtn.disabled = false;
+      })
+      .withFailureHandler((err) => {
+        console.error("Refresh failed:", err);
+        refreshBtn.textContent = "🔄 Refresh Data";
+        refreshBtn.disabled = false;
+      })
+      .getAllSensorData();
+  }
+
+  function restoreSensorSelection() {
     const savedSensor = sessionStorage.getItem("selectedSensor");
     if (savedSensor !== null) {
       const selector = document.getElementById("locationSelector");
       if (selector) selector.value = savedSensor;
     }
-
-    // 👇 Automatically reload table when sensor changes
-    document.getElementById("locationSelector").addEventListener("change", () => {
-      console.log("Sensor selection changed — updating history table...");
-      sessionStorage.setItem("selectedSensor", document.getElementById("locationSelector").value);
-      changeTableData();
-    });
-
-    changeTableData();
-  });
+  }
 
   // ---------------------------
   // UPDATE TABLE DATA
@@ -116,7 +140,6 @@
     }
 
     // Fallback: fetch full dataset (and cache it for later)
-    document.querySelector("#example-table").innerHTML = "<p>Loading data...</p>";
 
     google.script.run
       .withSuccessHandler(function (allData) {
