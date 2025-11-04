@@ -21,6 +21,10 @@ function include(filename) {
   return HtmlService.createHtmlOutputFromFile(filename).getContent();
 }
 
+function getScriptUrl() {
+  return ScriptApp.getService().getUrl();
+}
+
 /** ---------- Core Data Functions ---------- **/
 
 /**
