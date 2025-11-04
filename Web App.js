@@ -43,7 +43,7 @@ function getAllSensorData() {
 
     // Format values safely
     const formattedDate = Utilities.formatDate(timestamp, Session.getScriptTimeZone(), "yyyy/MM/dd");
-    const timeStr = Utilities.formatDate(timestamp, Session.getScriptTimeZone(), "HH:mm");
+    const timeStr = Utilities.formatDate(timestamp, Session.getScriptTimeZone(), "HH:mm:ss");
 
     const tempRaw = safeNumber(row[2]);
     const humRaw = safeNumber(row[3]);
@@ -91,7 +91,7 @@ function getLatestSensorData() {
     // Only keep the most recent reading per sensor
     if (!latest[sensorIndex] || timestamp > latest[sensorIndex].timestamp) {
       const formattedDate = Utilities.formatDate(timestamp, Session.getScriptTimeZone(), "yyyy/MM/dd");
-      const timeStr = Utilities.formatDate(timestamp, Session.getScriptTimeZone(), "HH:mm");
+      const timeStr = Utilities.formatDate(timestamp, Session.getScriptTimeZone(), "HH:mm:ss");
 
       const tempRaw = safeNumber(row[2]);
       const humRaw = safeNumber(row[3]);

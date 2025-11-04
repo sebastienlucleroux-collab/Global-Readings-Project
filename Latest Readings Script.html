@@ -8,8 +8,10 @@
     google.script.run
       .withSuccessHandler(function (result) {
         latestData = result;
-        console.log('Latest readings loaded:', latestData);
         preloadAllData();
+        if (document.getElementById('locationSelector').value) {
+          updateTable();
+        }
       })
       .withFailureHandler(console.error)
       .getLatestSensorData();

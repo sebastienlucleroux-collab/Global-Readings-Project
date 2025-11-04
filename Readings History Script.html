@@ -98,22 +98,22 @@
     if (filterType === "temperature") {
       customRangeFilter = function (data) {
         const value = parseFloat(data.temperature);
-        const lowerBound = alertInfo[locationIndex][1];
-        const upperBound = alertInfo[locationIndex][0];
+        const lowerBound = alertInfo[locationIndex][2];
+        const upperBound = alertInfo[locationIndex][1];
         return value < lowerBound || value > upperBound;
       };
     } else if (filterType === "humidity") {
       customRangeFilter = function (data) {
         const value = parseFloat(data.humidity);
-        const lowerBound = alertInfo[locationIndex][3];
-        const upperBound = alertInfo[locationIndex][2];
+        const lowerBound = alertInfo[locationIndex][4];
+        const upperBound = alertInfo[locationIndex][3];
         return (value / 100) < lowerBound || (value / 100) > upperBound;
       };
     } else if (filterType === "pressure") {
       customRangeFilter = function (data) {
         const value = parseFloat(data.pressure);
-        const lowerBound = alertInfo[locationIndex][5];
-        const upperBound = alertInfo[locationIndex][4];
+        const lowerBound = alertInfo[locationIndex][6];
+        const upperBound = alertInfo[locationIndex][5];
         return value < lowerBound || value > upperBound;
       };
     }
