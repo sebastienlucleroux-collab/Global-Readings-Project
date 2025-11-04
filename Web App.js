@@ -53,33 +53,6 @@ function getSensorData(sensorIndex) {
   return sensorData;
 }
 
-/*
-function getSensorData(sensorIndex) {
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Readings Database');
-  const data = sheet.getDataRange().getValues();
-  const sensorData = [];
-
-  for (var i = 0; i < data.length; i++) {
-    if (data[i][0] == Number(sensorIndex)) {
-      data[i].shift()
-
-      const dateTimeParts = data[i][0].split(' ');
-      const dateParts = dateTimeParts[0].split('/');
-      data[i][0] = [dateParts[2], dateParts[0].padStart(2,'0'), dateParts[1].padStart(2,'0')].join('/');
-      data[i].splice(1, 0, dateTimeParts[1]);
-
-      data[i][2] = `${(data[i][2]).toFixed(1)}°C`
-      data[i][3] = `${(Number(data[i][3].toFixed(1))*100).toFixed(1)}%`
-      data[i][4] = (data[i][4] === "N/A") ? data[i][4] : `${(data[i][4]).toFixed(1)}Pa`;
-
-      sensorData.push(data[i]);
-    }
-  }
-
-  return sensorData;
-}
-*/
-
 function include(filename) {
   return HtmlService.createHtmlOutputFromFile(filename)
     .getContent();

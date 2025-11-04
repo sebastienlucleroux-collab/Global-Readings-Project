@@ -10,8 +10,6 @@
       .withSuccessHandler(function (result) {
         sensorData = result;
         lastReading = sensorData[sensorData.length - 1];
-        console.log(lastReading);
-
         insertValues();
       })
       .withFailureHandler(function (error) {
