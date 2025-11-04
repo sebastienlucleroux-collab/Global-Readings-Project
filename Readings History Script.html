@@ -1,20 +1,46 @@
 <script>
+  let alertInfo = [];
+  let tableData = [];
 
-  document.addEventListener("DOMContentLoaded", () => {
+  document.addEventListener("DOMContentLoaded", function () {
+    console.log("DOM ready — setting up Tabulator...");
+
+    var table = new Tabulator("#example-table", {
+      data: [],
+      layout: "fitColumns",
+      responsiveLayout: "hide",
+      addRowPos: "top",
+      history: true,
+      pagination: "local",
+      paginationSize: 15,
+      paginationCounter: "rows",
+      movableColumns: true,
+      initialSort: [{ column: "date", dir: "asc" }],
+      columnDefaults: { tooltip: true },
+      columns: [
+        {
+          title: "Date",
+          field: "date",
+          sorter: "date",
+          sorterParams: { format: "yyyy/MM/dd", alignEmptyValues: "top" },
+        },
+        { title: "Time", field: "time" },
+        { title: "Temperature", field: "temperature" },
+        { title: "Humidity", field: "humidity" },
+        { title: "Pressure", field: "pressure" },
+      ],
+    });
+
     const savedSensor = sessionStorage.getItem("selectedSensor");
     if (savedSensor !== null) {
       const selector = document.getElementById("locationSelector");
-      selector.value = savedSensor;
-      changeTableData();
+      if (selector) selector.value = savedSensor;
     }
 
-    document.getElementById("locationSelector").addEventListener("change", (e) => {
-      sessionStorage.setItem("selectedSensor", e.target.value);
-    });
+    changeTableData();
   });
 
-  let alertInfo = [];
-  let tableData = [];
+
 
   function changeTableData() {
     const index = document.getElementById('locationSelector').value;
@@ -54,36 +80,6 @@
       .withFailureHandler(console.error)
       .getSensorData(index);
   }
-
-  var table = new Tabulator("#example-table", {
-    data: tableData,
-    layout: "fitColumns",
-    responsiveLayout: "hide",
-    addRowPos: "top",
-    history: true,
-    pagination: "local",
-    paginationSize: 15,
-    paginationCounter: "rows",
-    movableColumns: true,
-    initialSort: [
-      { column: "date", dir: "asc" },
-    ],
-    columnDefaults: {
-      tooltip: true,
-    },
-    columns: [
-      {
-        title: "Date", field: "date", sorter: "date", sorterParams: {
-          format: "yyyy/MM/dd",
-          alignEmptyValues: "top",
-        }
-      },
-      { title: "Time", field: "time" },
-      { title: "Temperature", field: "temperature" },
-      { title: "Humidity", field: "humidity" },
-      { title: "Pressure", field: "pressure" },
-    ],
-  });
 
   function filterData() {
 
