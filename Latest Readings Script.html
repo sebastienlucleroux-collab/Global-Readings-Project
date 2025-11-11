@@ -181,9 +181,17 @@
     if (!selector) return;
 
     const index = selector.value;
-    sessionStorage.setItem("selectedSensor", index);
+    const locationName = selector.options[selector.selectedIndex].text;
+    sessionStorage.setItem("selectedSensor", locationName);
 
-    const lastReading = latestData[index];
+    const lastReading = latestData[locationName];
+    if (!lastReading || !Array.isArray(lastReading)) {
+      console.warn(`No valid reading found for location: ${locationName}`);
+      insertValues(["N/A", "N/A", "N/A", "N/A", ""]);
+      return;
+    }
+
+    insertValues(lastReading);
     if (!lastReading || !Array.isArray(lastReading)) {
       console.warn(`No valid reading found for sensor index: ${index}`);
       insertValues(["N/A", "N/A", "N/A", "N/A", ""]);
