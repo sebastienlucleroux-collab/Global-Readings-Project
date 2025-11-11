@@ -30,13 +30,18 @@
       if (savedSensor && validOption) {
         selector.value = savedSensor;
       } else {
-        selector.selectedIndex = 0; // fallback to placeholder
+        selector.selectedIndex = 0;
         sessionStorage.removeItem("selectedSensor");
       }
 
       selector.addEventListener("change", (e) => {
-        sessionStorage.setItem("selectedSensor", e.target.value);
+        const selectedIndex = e.target.value;
+        const selectedName = e.target.options[e.target.selectedIndex].text;
+        sessionStorage.setItem("selectedSensor", selectedIndex);
+
         updateTable();
+
+        console.log(`✅ Table updated for ${selectedName} (index: ${selectedIndex})`);
       });
     }
 
@@ -181,9 +186,9 @@
     if (!selector) return;
 
     const index = selector.value;
-    const locationName = selector.options[selector.selectedIndex].text;
-    sessionStorage.setItem("selectedSensor", locationName);
+    sessionStorage.setItem("selectedSensor", index);
 
+    const locationName = selector.options[selector.selectedIndex].text;
     const lastReading = latestData[index];
     if (!lastReading || !Array.isArray(lastReading)) {
       console.warn(`No valid reading found for location: ${locationName}`);
