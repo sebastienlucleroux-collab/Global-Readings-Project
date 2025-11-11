@@ -184,43 +184,30 @@
     const locationName = selector.options[selector.selectedIndex].text;
     sessionStorage.setItem("selectedSensor", locationName);
 
-    const lastReading = latestData[locationName];
+    const lastReading = latestData[index];
     if (!lastReading || !Array.isArray(lastReading)) {
       console.warn(`No valid reading found for location: ${locationName}`);
       insertValues(["N/A", "N/A", "N/A", "N/A", ""]);
       return;
     }
+    function insertValues(reading) {
+      const [date, time, temp, hum, press] = reading;
+      cells.date.textContent = date || "N/A";
+      cells.time.textContent = time || "N/A";
+      cells.temperature.textContent = temp || "N/A";
+      cells.humidity.textContent = hum || "N/A";
 
-    insertValues(lastReading);
-    if (!lastReading || !Array.isArray(lastReading)) {
-      console.warn(`No valid reading found for sensor index: ${index}`);
-      insertValues(["N/A", "N/A", "N/A", "N/A", ""]);
-      return;
+      const pressureHeader = document.getElementById("pressureHeader");
+      const pressureCell = cells.pressure;
+
+      if (press && press !== "N/A") {
+        pressureHeader?.classList.remove("hidden");
+        pressureCell.classList.remove("hidden");
+        pressureCell.textContent = press;
+      } else {
+        pressureHeader?.classList.add("hidden");
+        pressureCell.classList.add("hidden");
+        pressureCell.textContent = "";
+      }
     }
-
-    insertValues(lastReading);
-  }
-
-  function insertValues(reading) {
-    const [date, time, temp, hum, press] = reading;
-    cells.date.textContent = date || "N/A";
-    cells.time.textContent = time || "N/A";
-    cells.temperature.textContent = temp || "N/A";
-    cells.humidity.textContent = hum || "N/A";
-
-    const pressureHeader = document.getElementById("pressureHeader");
-    const pressureCell = cells.pressure;
-
-    if (press && press !== "N/A") {
-      pressureHeader?.classList.remove("hidden");
-      pressureCell.classList.remove("hidden");
-      pressureCell.textContent = press;
-    } else {
-      pressureHeader?.classList.add("hidden");
-      pressureCell.classList.add("hidden");
-      pressureCell.textContent = "";
-    }
-  }
-  window.latestData = latestData;
-
 </script>
