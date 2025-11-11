@@ -1,25 +1,104 @@
 <script>
-  // ---------------------------
-  // GLOBAL VARIABLES
-  // ---------------------------
   let alertInfo = [];
   let allData = null;
-  let table; // ✅ Accessible globally
+  let table;
 
-  // ---------------------------
-  // INITIAL SETUP
-  // ---------------------------
-  document.addEventListener("DOMContentLoaded", function () {
-    console.log("DOM ready — initializing Tabulator...");
+  document.addEventListener("DOMContentLoaded", async () => {
+    // 1) populate dropdown from server (or cache)
+    try {
+      await populateLocationDropdown_history();
+    } catch (err) {
+      console.error("populateLocationDropdown_history failed:", err);
+    }
 
-    // Wait for #example-table to exist before building Tabulator
-    const tableElement = document.getElementById("example-table");
-    if (!tableElement) {
-      console.error("❌ Table element not found!");
+    // 2) initialize Tabulator
+    initializeTabulator();
+
+    // 3) restore selection from QR or session
+    const params = new URLSearchParams(window.location.search);
+    const qrSensor = params.get("sensor");
+    if (qrSensor !== null) sessionStorage.setItem("selectedSensor", qrSensor);
+    const savedSensor = sessionStorage.getItem("selectedSensor");
+    const selector = document.getElementById("locationSelector");
+    if (selector && savedSensor !== null) selector.value = savedSensor;
+
+    // 4) link selector change
+    if (selector) {
+      selector.addEventListener("change", () => {
+        sessionStorage.setItem("selectedSensor", selector.value);
+        changeTableData();
+      });
+    }
+
+    // 5) refresh button
+    const refreshBtn = document.getElementById("refreshDataBtn");
+    if (refreshBtn) {
+      refreshBtn.addEventListener("click", () => {
+        refreshBtn.textContent = "Refreshing...";
+        refreshBtn.disabled = true;
+        google.script.run
+          .withSuccessHandler(result => {
+            allData = result || {};
+            sessionStorage.setItem("allSensorData", JSON.stringify(allData));
+            changeTableData();
+            refreshBtn.textContent = "🔄 Refresh Data";
+            refreshBtn.disabled = false;
+          })
+          .withFailureHandler(err => {
+            console.error("Refresh failed:", err);
+            refreshBtn.textContent = "🔄 Refresh Data";
+            refreshBtn.disabled = false;
+          })
+          .getAllSensorData();
+      });
+    }
+  });
+
+  async function populateLocationDropdown_history() {
+    const selector = document.getElementById("locationSelector");
+    if (!selector) return;
+
+    selector.querySelectorAll("option:not([value=''])").forEach(o => o.remove());
+
+    const cached = sessionStorage.getItem("locationList");
+    if (cached) {
+      fillSelectWithLocations(selector, JSON.parse(cached));
       return;
     }
 
-    // Initialize Tabulator
+    return new Promise((resolve, reject) => {
+      google.script.run
+        .withSuccessHandler(locations => {
+          if (!Array.isArray(locations)) locations = [];
+          sessionStorage.setItem("locationList", JSON.stringify(locations));
+          fillSelectWithLocations(selector, locations);
+          resolve();
+        })
+        .withFailureHandler(err => {
+          console.error("getLocations failed:", err);
+          reject(err);
+        })
+        .getLocations();
+    });
+  }
+
+  function fillSelectWithLocations(selectElement, locations) {
+    selectElement.querySelectorAll("option:not([value=''])").forEach(o => o.remove());
+    locations.forEach((loc, idx) => {
+      const opt = document.createElement("option");
+      opt.value = idx;
+      opt.textContent = loc;
+      selectElement.appendChild(opt);
+    });
+  }
+
+  function initializeTabulator() {
+    const el = document.getElementById("example-table");
+    if (!el) {
+      console.error("No #example-table found");
+      return;
+    }
+
     table = new Tabulator("#example-table", {
       data: [],
       layout: "fitColumns",
@@ -38,59 +117,17 @@
         { title: "Temperature", field: "temperature" },
         { title: "Humidity", field: "humidity" },
         { title: "Pressure", field: "pressure" },
-      ],
+      ]
     });
 
-    // ✅ Wait until Tabulator finishes rendering
-    table.on("tableBuilt", function () {
-      console.log("✅ Tabulator ready — loading sensor data...");
+    table.on("tableBuilt", () => {
       changeTableData();
     });
+  }
 
-    // Refresh Button
-    const refreshBtn = document.getElementById("refreshDataBtn");
-    if (refreshBtn) {
-      refreshBtn.addEventListener("click", function () {
-        console.log("Manual refresh triggered (History)...");
-        refreshBtn.textContent = "Refreshing...";
-        refreshBtn.disabled = true;
-
-        google.script.run
-          .withSuccessHandler(function (result) {
-            allData = result;
-            sessionStorage.setItem("allSensorData", JSON.stringify(result));
-            console.log("History data refreshed!");
-            changeTableData();
-            refreshBtn.textContent = "🔄 Refresh Data";
-            refreshBtn.disabled = false;
-          })
-          .withFailureHandler(function (error) {
-            console.error("Refresh failed:", error);
-            refreshBtn.textContent = "🔄 Refresh Data";
-            refreshBtn.disabled = false;
-          })
-          .getAllSensorData();
-      });
-    }
-
-    // Restore previous sensor
-    const savedSensor = sessionStorage.getItem("selectedSensor");
-    const selector = document.getElementById("locationSelector");
-    if (selector && savedSensor !== null) selector.value = savedSensor;
-
-    // React to location change
-    selector.addEventListener("change", () => {
-      sessionStorage.setItem("selectedSensor", selector.value);
-      changeTableData();
-    });
-  });
-
-  // ---------------------------
-  // UPDATE TABLE DATA
-  // ---------------------------
   function changeTableData() {
     if (!table) {
-      console.warn("⚠️ Table not ready yet — skipping update.");
+      console.warn("Table not initialized yet");
       return;
     }
 
@@ -98,110 +135,33 @@
     const qrSensor = new URLSearchParams(window.location.search).get("sensor");
     if (!index && qrSensor !== null) index = qrSensor;
 
-    if (index !== null && index !== undefined) {
-      sessionStorage.setItem("selectedSensor", index);
-    }
+    if (index !== null && index !== undefined) sessionStorage.setItem("selectedSensor", index);
 
     const cached = sessionStorage.getItem("allSensorData");
-
     if (cached) {
-      console.log("Loaded history from cache!");
-      const allData = JSON.parse(cached);
-      if (allData[index]) {
-        const sensorData = allData[index].map(row => ({
-          date: row[0],
-          time: row[1],
-          temperature: row[2],
-          humidity: row[3],
-          pressure: row[4],
-        }));
+      const all = JSON.parse(cached);
+      if (all[index]) {
+        const sensorData = all[index].map(r => ({ date: r[0], time: r[1], temperature: r[2], humidity: r[3], pressure: r[4] }));
         table.replaceData(sensorData);
         return;
-      } else {
-        console.warn("Cache found, but no data for this sensor — fetching fresh...");
       }
     }
 
-    document.querySelector("#example-table").innerHTML = "<p>Loading data...</p>";
-
+    // fallback: fetch all data then populate and cache
     google.script.run
-      .withSuccessHandler(function (result) {
-        sessionStorage.setItem("allSensorData", JSON.stringify(result));
-        if (result[index]) {
-          const sensorData = result[index].map(row => ({
-            date: row[0],
-            time: row[1],
-            temperature: row[2],
-            humidity: row[3],
-            pressure: row[4],
-          }));
+      .withSuccessHandler(result => {
+        sessionStorage.setItem("allSensorData", JSON.stringify(result || {}));
+        if (result && result[index]) {
+          const sensorData = result[index].map(r => ({ date: r[0], time: r[1], temperature: r[2], humidity: r[3], pressure: r[4] }));
           table.replaceData(sensorData);
         } else {
           document.querySelector("#example-table").innerHTML = "<p>No data available for this sensor.</p>";
         }
       })
-      .withFailureHandler(function (error) {
-        console.error("Error fetching all data:", error);
+      .withFailureHandler(err => {
+        console.error("Error fetching all data:", err);
         document.querySelector("#example-table").innerHTML = "<p>Error loading data.</p>";
       })
       .getAllSensorData();
-  }
-
-  // ---------------------------
-  // FILTERING
-  // ---------------------------
-  function filterData() {
-    if (!table) {
-      console.warn("⚠️ Table not ready yet — cannot apply filter.");
-      return;
-    }
-
-    google.script.run
-      .withSuccessHandler(function (result) {
-        alertInfo = result;
-        setCustomFilter();
-      })
-      .withFailureHandler(function (error) {
-        console.error("Error fetching alert info:", error);
-      })
-      .getAlertInfo();
-  }
-
-  function setCustomFilter() {
-    if (!table) return;
-
-    table.clearFilter();
-    const filterType = document.getElementById("readingFilter").value;
-    const locationIndex = Number(document.getElementById("locationSelector").value);
-    if (filterType === "none") return;
-
-    let customRangeFilter = null;
-
-    if (filterType === "temperature") {
-      customRangeFilter = (data) => {
-        const value = parseFloat(data.temperature);
-        const lower = alertInfo[locationIndex][2];
-        const upper = alertInfo[locationIndex][1];
-        return value < lower || value > upper;
-      };
-    } else if (filterType === "humidity") {
-      customRangeFilter = (data) => {
-        const value = parseFloat(data.humidity);
-        const lower = alertInfo[locationIndex][4];
-        const upper = alertInfo[locationIndex][3];
-        return value / 100 < lower || value / 100 > upper;
-      };
-    } else if (filterType === "pressure") {
-      customRangeFilter = (data) => {
-        const value = parseFloat(data.pressure);
-        const lower = alertInfo[locationIndex][6];
-        const upper = alertInfo[locationIndex][5];
-        return value < lower || value > upper;
-      };
-    }
-
-    if (customRangeFilter) {
-      table.setFilter(customRangeFilter);
-    }
   }
 </script>

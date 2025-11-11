@@ -180,17 +180,24 @@ function doPost(e) {
 function getLocations() {
   try {
     const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Alert Info");
-    if (!sheet) throw new Error("Sheet 'Alert Info' not found.");
+    if (!sheet) {
+      Logger.log("Sheet 'Alert Info' not found");
+      return [];
+    }
+    const lastRow = sheet.getLastRow();
+    if (lastRow < 2) return [];
 
-    const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 1).getValues();
-    // Skips header row (starts from row 2)
+    // Read column A starting at row 2 to skip header
+    const data = sheet.getRange(2, 1, lastRow - 1, 1).getValues().flat();
 
-    // Flatten array and filter out blanks
-    const locations = data.map(r => r[0]).filter(name => name);
+    // Filter blanks and trim strings
+    const locations = data
+      .map(v => (typeof v === 'string' ? v.trim() : v))
+      .filter(v => v !== null && v !== undefined && v !== '');
 
-    return locations; // e.g. ["Pressure 1", "Pressure 2", "No Pressure 1"]
-  } catch (error) {
-    Logger.log("Error in getLocations: " + error);
+    return locations;
+  } catch (err) {
+    Logger.log("getLocations error: " + err);
     return [];
   }
 }
