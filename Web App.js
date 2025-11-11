@@ -176,3 +176,21 @@ function doPost(e) {
       .setMimeType(ContentService.MimeType.TEXT);
   }
 }
+
+function getLocations() {
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Alert Info");
+    if (!sheet) throw new Error("Sheet 'Alert Info' not found.");
+
+    const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 1).getValues();
+    // Skips header row (starts from row 2)
+
+    // Flatten array and filter out blanks
+    const locations = data.map(r => r[0]).filter(name => name);
+
+    return locations; // e.g. ["Pressure 1", "Pressure 2", "No Pressure 1"]
+  } catch (error) {
+    Logger.log("Error in getLocations: " + error);
+    return [];
+  }
+}
