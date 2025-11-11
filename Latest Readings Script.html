@@ -46,25 +46,29 @@
     // 4) Hook refresh button
     const refreshBtn = document.getElementById("refreshDataBtn");
     if (refreshBtn) {
-      refreshBtn.addEventListener("click", async () => {
-        if (refreshBtn.disabled) return;
-        setRefreshButtonState(true);
+      if (refreshBtn) {
+        refreshBtn.addEventListener("click", async () => {
+          if (refreshBtn.disabled) return;
+          setRefreshButtonState(true);
 
-        try {
-          const result = await fetchLatestSensorData();
-          latestData = result || {};
-          console.log("latestData sample:", latestData);
-          cacheLatestData(result);
-          updateTable();
-        } catch (error) {
-          console.error("Refresh failed:", error);
-          alert("Failed to refresh data. Please try again later.");
-        } finally {
-          setRefreshButtonState(false);
-        }
-      });
+          try {
+            const result = await fetchLatestSensorData();
+            latestData = result || {};
+            cacheLatestData(result);
+            updateTable();
+          } catch (error) {
+            console.error("Refresh failed:", error);
+            alert("Failed to refresh data. Please try again later.");
+          } finally {
+            setRefreshButtonState(false);
+          }
+        });
+      }
 
+      // 🔽 move these outside so other functions can use them too
       function setRefreshButtonState(isLoading) {
+        const refreshBtn = document.getElementById("refreshDataBtn");
+        if (!refreshBtn) return;
         refreshBtn.textContent = isLoading ? "Refreshing..." : "🔄 Refresh Data";
         refreshBtn.disabled = isLoading;
       }
