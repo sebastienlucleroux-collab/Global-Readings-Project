@@ -21,6 +21,7 @@
     // 2) Restore selection via QR param or session
     const params = new URLSearchParams(window.location.search);
     const qrSensor = params.get("sensor");
+    const selector = document.getElementById("locationSelector");
     if (qrSensor !== null) sessionStorage.setItem("selectedSensor", qrSensor);
 
     const savedSensor = sessionStorage.getItem("selectedSensor");
@@ -52,6 +53,7 @@
         try {
           const result = await fetchLatestSensorData();
           latestData = result || {};
+          console.log("latestData sample:", latestData);
           cacheLatestData(result);
           updateTable();
         } catch (error) {
