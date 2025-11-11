@@ -223,12 +223,18 @@
     }
 
     // --- now decide what to display ---
-    if (!lastReading || !Array.isArray(lastReading)) {
-      console.warn(`No valid reading found for location: ${locationName}`);
+    if (index === "" || index === null || index === undefined) {
+      console.log("ℹ️ No location selected yet — clearing table.");
+      insertValues(["", "", "", "", ""]);
+      return;
+    } else if (!lastReading || !Array.isArray(lastReading)) {
+      console.warn(`⚠️ No valid reading found for location: ${locationName}`);
       insertValues(["N/A", "N/A", "N/A", "N/A", ""]);
+      return;
     } else {
       console.log(`✅ Populating table for ${locationName}:`, lastReading);
       insertValues(lastReading);
     }
   }
+
 </script>
