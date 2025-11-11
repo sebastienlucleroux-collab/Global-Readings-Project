@@ -64,29 +64,29 @@
           }
         });
       }
-
-      // 🔽 move these outside so other functions can use them too
-      function setRefreshButtonState(isLoading) {
-        const refreshBtn = document.getElementById("refreshDataBtn");
-        if (!refreshBtn) return;
-        refreshBtn.textContent = isLoading ? "Refreshing..." : "🔄 Refresh Data";
-        refreshBtn.disabled = isLoading;
-      }
-
-      function fetchLatestSensorData() {
-        return new Promise((resolve, reject) => {
-          google.script.run
-            .withSuccessHandler(resolve)
-            .withFailureHandler(reject)
-            .getLatestSensorData();
-        });
-      }
-
-      function cacheLatestData(data) {
-        sessionStorage.setItem("latestSensorData", JSON.stringify(data || {}));
-      }
     }
   });
+
+  // 🔽 move these outside so other functions can use them too
+  function setRefreshButtonState(isLoading) {
+    const refreshBtn = document.getElementById("refreshDataBtn");
+    if (!refreshBtn) return;
+    refreshBtn.textContent = isLoading ? "Refreshing..." : "🔄 Refresh Data";
+    refreshBtn.disabled = isLoading;
+  }
+
+  function fetchLatestSensorData() {
+    return new Promise((resolve, reject) => {
+      google.script.run
+        .withSuccessHandler(resolve)
+        .withFailureHandler(reject)
+        .getLatestSensorData();
+    });
+  }
+
+  function cacheLatestData(data) {
+    sessionStorage.setItem("latestSensorData", JSON.stringify(data || {}));
+  }
 
   async function populateLocationDropdown_latest() {
     const selector = document.getElementById("locationSelector");
