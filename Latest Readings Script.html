@@ -11,64 +11,57 @@
   };
 
   document.addEventListener("DOMContentLoaded", async () => {
-    // 1) Populate locations (from cache or server)
     try {
+      console.log("⏳ Populating locations...");
       await populateLocationDropdown_latest();
+      console.log("✅ Locations populated");
     } catch (error) {
       console.error("populateLocationDropdown_latest failed:", error);
     }
 
-    // 2) Restore selection via QR param or session
+    // --- Restore saved selection or default ---
+    const selector = document.getElementById("locationSelector");
     const params = new URLSearchParams(window.location.search);
     const qrSensor = params.get("sensor");
-    const selector = document.getElementById("locationSelector");
     if (qrSensor !== null) sessionStorage.setItem("selectedSensor", qrSensor);
 
     const savedSensor = sessionStorage.getItem("selectedSensor");
     if (selector) {
       const validOption = selector.querySelector(`option[value="${savedSensor}"]`);
-      if (savedSensor && validOption) {
-        selector.value = savedSensor;
-      } else {
-        selector.selectedIndex = 0;
-        sessionStorage.removeItem("selectedSensor");
-      }
-
-      selector.addEventListener("change", (e) => {
-        const selectedIndex = e.target.value;
-        const selectedName = e.target.options[e.target.selectedIndex].text;
-        sessionStorage.setItem("selectedSensor", selectedIndex);
-
-        updateTable();
-
-        console.log(`✅ Table updated for ${selectedName} (index: ${selectedIndex})`);
-      });
+      if (savedSensor && validOption) selector.value = savedSensor;
+      else selector.selectedIndex = 0;
     }
 
-    // 3) Load latest readings and preload full data
+    // --- Now load readings ---
+    console.log("⏳ Fetching latest readings...");
     await loadLatestThenAllData();
+    console.log("✅ Latest readings loaded");
 
-    // 4) Hook refresh button
+    // --- Update table AFTER everything is ready ---
+    if (selector && selector.value !== "") {
+      console.log("📊 Updating table after data & dropdown ready");
+      updateTable();
+    }
+
+    // --- Hook refresh button ---
     const refreshBtn = document.getElementById("refreshDataBtn");
     if (refreshBtn) {
-      if (refreshBtn) {
-        refreshBtn.addEventListener("click", async () => {
-          if (refreshBtn.disabled) return;
-          setRefreshButtonState(true);
+      refreshBtn.addEventListener("click", async () => {
+        if (refreshBtn.disabled) return;
+        setRefreshButtonState(true);
 
-          try {
-            const result = await fetchLatestSensorData();
-            latestData = result || {};
-            cacheLatestData(result);
-            updateTable();
-          } catch (error) {
-            console.error("Refresh failed:", error);
-            alert("Failed to refresh data. Please try again later.");
-          } finally {
-            setRefreshButtonState(false);
-          }
-        });
-      }
+        try {
+          const result = await fetchLatestSensorData();
+          latestData = result || {};
+          cacheLatestData(result);
+          updateTable();
+        } catch (error) {
+          console.error("Refresh failed:", error);
+          alert("Failed to refresh data. Please try again later.");
+        } finally {
+          setRefreshButtonState(false);
+        }
+      });
     }
   });
 
@@ -151,22 +144,37 @@
 
   async function loadLatestThenAllData() {
     try {
+      console.log("🗃️ Checking cached latestSensorData...");
       const cached = sessionStorage.getItem("latestSensorData");
       if (cached) {
         latestData = JSON.parse(cached);
-        updateTable();
+        console.log("✅ Loaded from cache:", latestData);
+      } else {
+        console.log("ℹ️ No cached data found.");
       }
 
-      const latest = await fetchLatestSensorData();
-      latestData = latest || {};
-      cacheLatestData(latest);
+      console.log("🌐 Fetching latest sensor data from server...");
+      const freshData = await fetchLatestSensorData();
+
+      if (freshData && Object.keys(freshData).length > 0) {
+        console.log("✅ Received new data:", freshData);
+        latestData = freshData;
+        cacheLatestData(freshData);
+      } else {
+        console.warn("⚠️ No new data received — using cached version.");
+      }
+
+      // ✅ Update table only once, after data is finalized
       updateTable();
 
+      // 🕒 Preload allSensorData quietly
       requestIdleCallback(() => {
+        console.log("💾 Preloading allSensorData in background...");
         google.script.run
           .withSuccessHandler(result => {
             allData = result || {};
             sessionStorage.setItem("allSensorData", JSON.stringify(allData));
+            console.log("✅ allSensorData cached.");
           })
           .withFailureHandler(error => {
             console.groupCollapsed("⚠️ [Latest Readings Preload]");
@@ -180,6 +188,7 @@
       alert("⚠️ Could not load latest readings. Please refresh the page.");
     }
   }
+
 
   function updateTable() {
     const selector = document.getElementById("locationSelector");
