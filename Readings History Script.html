@@ -133,7 +133,10 @@
 
     let index = document.getElementById("locationSelector")?.value;
     const qrSensor = new URLSearchParams(window.location.search).get("sensor");
-    if (!index && qrSensor !== null) index = qrSensor;
+    // treat index as missing only if it's null/undefined/empty string
+    if ((index === null || index === undefined || index === "") && qrSensor !== null) {
+      index = qrSensor;
+    }
 
     if (index !== null && index !== undefined) sessionStorage.setItem("selectedSensor", index);
 
@@ -153,15 +156,31 @@
         sessionStorage.setItem("allSensorData", JSON.stringify(result || {}));
         if (result && result[index]) {
           const sensorData = result[index].map(r => ({ date: r[0], time: r[1], temperature: r[2], humidity: r[3], pressure: r[4] }));
-          table.replaceData(sensorData);
+          safeReplaceTableData(sensorData);
         } else {
-          document.querySelector("#example-table").innerHTML = "<p>No data available for this sensor.</p>";
+          console.log("No data for selected sensor index:", index);
+          safeReplaceTableData([]);
         }
       })
       .withFailureHandler(err => {
         console.error("Error fetching all data:", err);
-        document.querySelector("#example-table").innerHTML = "<p>Error loading data.</p>";
+        safeReplaceTableData([]);
       })
       .getAllSensorData();
+  }
+
+  function safeReplaceTableData(rows) {
+    if (!table) return;
+    try {
+      table.replaceData(rows);
+    } catch (err) {
+      // If replaceData failed because table not ready, wait for build then try once
+      const handler = () => {
+        try { table.replaceData(rows); } catch (e) { console.error("replaceData after build failed:", e); }
+        // remove handler if possible — Tabulator `off` API exists in v6
+        try { table.off && table.off("tableBuilt", handler); } catch (e) { }
+      };
+      if (table.on) table.on("tableBuilt", handler);
+    }
   }
 </script>

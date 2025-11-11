@@ -11,11 +11,15 @@ function safeNumber(value) {
 
 /** ---------- View Rendering ---------- **/
 
+const PAGE_WHITELIST = ["Latest Readings", "Readings History"]; // add allowed files
+
 function doGet(e) {
-  const page = e.parameter.page || "Latest Readings";
+  const requested = (e && e.parameter && e.parameter.page) ? e.parameter.page : "Latest Readings";
+  const page = PAGE_WHITELIST.includes(requested) ? requested : "Latest Readings";
   const template = HtmlService.createTemplateFromFile(page);
   return template.evaluate().setTitle("Global Readings Project");
 }
+
 
 function include(filename) {
   return HtmlService.createHtmlOutputFromFile(filename).getContent();
@@ -31,11 +35,26 @@ function getScriptUrl() {
  * Loads and caches the entire readings database once per execution context.
  */
 function getDatabaseCache_() {
-  if (typeof globalThis.__readingsCache === "undefined") {
-    const sheet = getSheet("Readings Database");
-    globalThis.__readingsCache = sheet.getDataRange().getValues();
+  const cache = CacheService.getScriptCache();
+  const cached = cache.get("readings_db_cached");
+  if (cached) {
+    try { return JSON.parse(cached); } catch (e) { /* fall through */ }
   }
-  return globalThis.__readingsCache;
+
+  const sheet = getSheet("Readings Database");
+  const data = (sheet && sheet.getDataRange()) ? sheet.getDataRange().getValues() : [];
+  try {
+    cache.put("readings_db_cached", JSON.stringify(data), 600); // 600 seconds
+  } catch (e) {
+    // fallback to globalThis to avoid breaking behavior
+    globalThis.__readingsCache = data;
+  }
+  return data;
+}
+
+function invalidateDatabaseCache() {
+  CacheService.getScriptCache().remove("readings_db_cached");
+  try { delete globalThis.__readingsCache; } catch (e) { /* ignore */ }
 }
 
 /**
@@ -53,6 +72,9 @@ function getAllSensorData() {
     if (isNaN(sensorIndex) || sensorIndex < 0) return;
 
     const timestamp = parseTimestamp_(row[1]);
+    if (!timestamp) {
+      return;
+    }
     const formattedDate = Utilities.formatDate(timestamp, Session.getScriptTimeZone(), "yyyy/MM/dd");
     const timeStr = Utilities.formatDate(timestamp, Session.getScriptTimeZone(), "HH:mm:ss");
 
@@ -88,6 +110,9 @@ function getLatestSensorData() {
     if (isNaN(sensorIndex) || sensorIndex < 0) return;
 
     const timestamp = parseTimestamp_(row[1]);
+    if (!timestamp) {
+      return;
+    }
     if (!latest[sensorIndex] || timestamp > latest[sensorIndex].timestamp) {
       const formattedDate = Utilities.formatDate(timestamp, Session.getScriptTimeZone(), "yyyy/MM/dd");
       const timeStr = Utilities.formatDate(timestamp, Session.getScriptTimeZone(), "HH:mm:ss");
@@ -120,13 +145,14 @@ function getLatestSensorData() {
  * Parses a timestamp value safely (supports Date or string).
  */
 function parseTimestamp_(value) {
-  if (value instanceof Date) return value;
+  if (value instanceof Date && !isNaN(value.getTime())) return value;
   if (typeof value === "string") {
     const parsed = Date.parse(value.trim());
     if (!isNaN(parsed)) return new Date(parsed);
   }
-  return new Date(0); // fallback
+  return null; // explicit invalid timestamp
 }
+
 
 /** ---------- Alerts Handling ---------- **/
 
@@ -179,23 +205,8 @@ function doPost(e) {
 
 function getLocations() {
   try {
-    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Alert Info");
-    if (!sheet) {
-      Logger.log("Sheet 'Alert Info' not found");
-      return [];
-    }
-    const lastRow = sheet.getLastRow();
-    if (lastRow < 2) return [];
-
-    // Read column A starting at row 2 to skip header
-    const data = sheet.getRange(2, 1, lastRow - 1, 1).getValues().flat();
-
-    // Filter blanks and trim strings
-    const locations = data
-      .map(v => (typeof v === 'string' ? v.trim() : v))
-      .filter(v => v !== null && v !== undefined && v !== '');
-
-    return locations;
+    const alertInfo = getAlertInfo();
+    return alertInfo.map(row => row[0]).filter(Boolean);
   } catch (err) {
     Logger.log("getLocations error: " + err);
     return [];

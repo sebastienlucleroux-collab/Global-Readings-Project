@@ -18,7 +18,11 @@
     const savedSensor = sessionStorage.getItem("selectedSensor");
     const selector = document.getElementById("locationSelector");
     if (selector) {
-      if (savedSensor !== null) selector.value = savedSensor;
+      if (savedSensor !== null && selector.querySelector(`option[value="${savedSensor}"]`)) {
+        selector.value = savedSensor;
+      } else {
+        sessionStorage.removeItem("selectedSensor");
+      }
       selector.addEventListener("change", (e) => {
         sessionStorage.setItem("selectedSensor", e.target.value);
         updateTable();
@@ -55,10 +59,6 @@
   async function populateLocationDropdown_latest() {
     const selector = document.getElementById("locationSelector");
     if (!selector) return;
-
-    // Remove previously added non-placeholder options
-    selector.querySelectorAll("option:not([value=''])").forEach(o => o.remove());
-
     const cached = sessionStorage.getItem("locationList");
     if (cached) {
       fillSelectWithLocations(selector, JSON.parse(cached));
@@ -134,13 +134,17 @@
     const pressureHeader = document.getElementById("pressureHeader");
     const pressureCell = document.getElementById("pressureCell");
     if (press && press !== "N/A") {
-      pressureHeader.classList.remove("hidden");
-      pressureCell.classList.remove("hidden");
-      pressureCell.textContent = press;
+      if (pressureHeader) pressureHeader.classList.remove("hidden");
+      if (pressureCell) {
+        pressureCell.classList.remove("hidden");
+        pressureCell.textContent = press;
+      }
     } else {
-      pressureHeader.classList.add("hidden");
-      pressureCell.classList.add("hidden");
-      pressureCell.textContent = "";
+      if (pressureHeader) pressureHeader.classList.add("hidden");
+      if (pressureCell) {
+        pressureCell.classList.add("hidden");
+        pressureCell.textContent = "";
+      }
     }
   }
 </script>
