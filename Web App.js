@@ -38,7 +38,14 @@ function getDatabaseCache_() {
   const cache = CacheService.getScriptCache();
   const cached = cache.get("readings_db_cached");
   if (cached) {
-    try { return JSON.parse(cached); } catch (e) { /* fall through */ }
+    try {
+      return JSON.parse(cached);
+    } catch (e) {
+      Logger.log("Cache parse failed, using backup cache");
+    }
+  }
+  if (globalThis.__readingsCache) {
+    return globalThis.__readingsCache;
   }
 
   const sheet = getSheet("Readings Database");
@@ -53,8 +60,9 @@ function getDatabaseCache_() {
 }
 
 function invalidateDatabaseCache() {
-  CacheService.getScriptCache().remove("readings_db_cached");
-  try { delete globalThis.__readingsCache; } catch (e) { /* ignore */ }
+  const CACHE_KEY = "readings_db_cached";
+  CacheService.getScriptCache().remove(CACHE_KEY);
+  try { delete globalThis.__readingsCache; } catch (e) { /* ignore */ };
 }
 
 /**
@@ -147,7 +155,7 @@ function getLatestSensorData() {
 function parseTimestamp_(value) {
   if (value instanceof Date && !isNaN(value.getTime())) return value;
   if (typeof value === "string") {
-    const parsed = Date.parse(value.trim());
+    const parsed = Date.parse(value.replace(/-/g, "/").trim());
     if (!isNaN(parsed)) return new Date(parsed);
   }
   return null; // explicit invalid timestamp
@@ -190,7 +198,7 @@ function doPost(e) {
     ]);
 
     // Invalidate cache so next load is fresh
-    delete globalThis.__readingsCache;
+    invalidateDatabaseCache();
 
     return ContentService
       .createTextOutput("Data added successfully")
@@ -208,7 +216,7 @@ function getLocations() {
     const alertInfo = getAlertInfo();
     return alertInfo.map(row => row[0]).filter(Boolean);
   } catch (err) {
-    Logger.log("getLocations error: " + err);
+    Logger.log(`getLocations error: ${err.message || err}`);
     return [];
   }
 }

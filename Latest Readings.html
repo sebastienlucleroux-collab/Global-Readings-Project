@@ -3,7 +3,7 @@
 
 <head>
   <base target="_top">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <!-- ✅ Include only your own styles, not Tabulator -->
   <?!= include('Latest Readings Styles'); ?>
 </head>
@@ -24,14 +24,14 @@
           <th class="headerCell">TIME</th>
           <th class="headerCell">TEMPERATURE</th>
           <th class="headerCell">HUMIDITY</th>
-          <th class="headerCell hidden" id="pressureHeader">PRESSURE</th>
+          <th class="headerCell hidden" id="pressureHeader" aria-hidden="true">PRESSURE</th>
         </tr>
       </thead>
       <tbody>
         <tr class="tableRow" id="valueRow">
           <td class="valueCell" id="locationCell">
             <select id="locationSelector" onchange="updateTable()">
-              <option value="" disabled selected hidden>Select an option</option>
+              <option value="" disabled selected hidden>— Select Location —</option>
               <!--
               <option value="0">Pressure 1</option>
               <option value="1">Pressure 2</option>
@@ -51,7 +51,7 @@
           <td class="valueCell" id="timeCell"></td>
           <td class="valueCell" id="temperatureCell"></td>
           <td class="valueCell" id="humidityCell"></td>
-          <td class="valueCell hidden" id="pressureCell"></td>
+          <td class="valueCell hidden" id="pressureCell" aria-hidden="true"></td>
         </tr>
       </tbody>
     </table>
@@ -63,7 +63,7 @@
   <!-- ↩ Back / History Button -->
   <?var url = getScriptUrl();?>
   <a href="<?=url?>?page=Readings History">
-    <input type="button" name="button" value="See Full History">
+    <input type="button" name="button" class="navButton" value="📜 See Full History">
   </a>
 
   <?!= include('Latest Readings Script'); ?>

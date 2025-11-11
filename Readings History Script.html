@@ -54,6 +54,15 @@
     }
   });
 
+  document.addEventListener("DOMContentLoaded", () => {
+    const selector = document.getElementById("locationSelector");
+    if (selector) selector.addEventListener("change", changeTableData);
+
+    const filter = document.getElementById("readingFilter");
+    if (filter) filter.addEventListener("change", filterData);
+  });
+
+
   async function populateLocationDropdown_history() {
     const selector = document.getElementById("locationSelector");
     if (!selector) return;
@@ -109,7 +118,7 @@
       paginationSize: 15,
       paginationCounter: "rows",
       movableColumns: true,
-      initialSort: [{ column: "date", dir: "asc" }],
+      initialSort: [{ column: "date", dir: "desc" }],
       columnDefaults: { tooltip: true },
       columns: [
         { title: "Date", field: "date", sorter: "date", sorterParams: { format: "yyyy/MM/dd" } },
@@ -153,14 +162,12 @@
     // fallback: fetch all data then populate and cache
     google.script.run
       .withSuccessHandler(result => {
-        sessionStorage.setItem("allSensorData", JSON.stringify(result || {}));
-        if (result && result[index]) {
-          const sensorData = result[index].map(r => ({ date: r[0], time: r[1], temperature: r[2], humidity: r[3], pressure: r[4] }));
-          safeReplaceTableData(sensorData);
-        } else {
-          console.log("No data for selected sensor index:", index);
-          safeReplaceTableData([]);
-        }
+        const validData = result && typeof result === "object" ? result : {};
+        sessionStorage.setItem("allSensorData", JSON.stringify(validData));
+        const sensorRows = validData[index]?.map(([date, time, temp, hum, pres]) => ({
+          date, time, temperature: temp, humidity: hum, pressure: pres
+        })) || [];
+        safeReplaceTableData(sensorRows);
       })
       .withFailureHandler(err => {
         console.error("Error fetching all data:", err);

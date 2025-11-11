@@ -16,7 +16,7 @@
 
   <div id="example-table"></div>
 
-  <select id="locationSelector" onchange="changeTableData()">
+  <select id="locationSelector">
     <option value="" disabled selected hidden>Select an option</option>
     <!--
     <option value="0">Pressure 1</option>
@@ -35,7 +35,7 @@
 
   <div>
     <p>View Anomalous Readings for</p>
-    <select id="readingFilter" onchange="filterData()">
+    <select id="readingFilter">
       <option value="none">None</option>
       <option value="temperature">Temperature</option>
       <option value="humidity">Humidity</option>
@@ -44,13 +44,10 @@
   </div>
 
   <?var url = getScriptUrl();?>
-  <a href='<?=url?>?page=Latest Readings'>
-    <input type='button' name='button' value='Back'>
-  </a>
+  <a href="<?=url?>?page=Latest Readings" class="btn-back">⬅️ Back</a>
 
   <script type="text/javascript" src="https://unpkg.com/tabulator-tables@6.3.1/dist/js/tabulator.min.js"></script>
   <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/luxon@2.3.1/build/global/luxon.min.js"></script>
-
   <?!= include('Readings History Script'); ?>
 </body>
 
