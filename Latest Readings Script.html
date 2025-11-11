@@ -190,11 +190,8 @@
 
     const locationName = selector.options[selector.selectedIndex].text;
     const lastReading = latestData[index];
-    if (!lastReading || !Array.isArray(lastReading)) {
-      console.warn(`No valid reading found for location: ${locationName}`);
-      insertValues(["N/A", "N/A", "N/A", "N/A", ""]);
-      return;
-    }
+
+    // --- helper function defined first ---
     function insertValues(reading) {
       const [date, time, temp, hum, press] = reading;
       cells.date.textContent = date || "N/A";
@@ -214,6 +211,15 @@
         pressureCell.classList.add("hidden");
         pressureCell.textContent = "";
       }
+    }
+
+    // --- now decide what to display ---
+    if (!lastReading || !Array.isArray(lastReading)) {
+      console.warn(`No valid reading found for location: ${locationName}`);
+      insertValues(["N/A", "N/A", "N/A", "N/A", ""]);
+    } else {
+      console.log(`✅ Populating table for ${locationName}:`, lastReading);
+      insertValues(lastReading);
     }
   }
 </script>
