@@ -1,3 +1,5 @@
+/*
+
 //NB: All iterations of 'testDataArray' must be replaced
 
 //List of all locations
@@ -182,3 +184,5 @@ Reading: ${testDataArray[4]}kPa`;
     MailApp.sendEmail(recipient, subject, body);
   }
 }
+
+*/
