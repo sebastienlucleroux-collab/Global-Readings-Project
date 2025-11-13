@@ -160,7 +160,13 @@ function parseTimestamp_(value) {
     const parsed = Date.parse(value.replace(/-/g, "/").trim());
     if (!isNaN(parsed)) return new Date(parsed);
   }
-  return null; // explicit invalid timestamp
+  // handle numeric serials (Sheets date serials)
+  if (typeof value === "number" && value > 0) {
+    const ms = (value - 25569) * 86400 * 1000;
+    const d = new Date(ms);
+    if (!isNaN(d.getTime())) return d;
+  }
+  return null;
 }
 
 
@@ -210,30 +216,46 @@ function doPost(e) {
     const data = JSON.parse(e.postData.contents);
     const SECRET_KEY = "abc123";
 
-    if (data.key && data.key !== SECRET_KEY) {
+    // require valid key explicitly
+    if (!data.key || data.key !== SECRET_KEY) {
       return ContentService.createTextOutput("Unauthorized");
     }
 
+
     const sheet = getSheet("Readings Database");
+    // --- Normalize values before saving ---
+    const tempVal = Number(data.temperature);
+
+    let humidityVal = Number(data.humidity);
+    if (!isNaN(humidityVal) && humidityVal > 1) {
+      // Convert percent to fraction (e.g. 85 -> 0.85)
+      humidityVal = humidityVal / 100;
+    }
+
+    let pressureVal = Number(data.pressure); // Pa (no conversion)
+    if (isNaN(pressureVal)) pressureVal = "";
+
+    // --- Write to sheet ---
     sheet.appendRow([
       data.unit || "",
       new Date(),
-      data.temperature || "",
-      data.humidity || "",
-      data.pressure || ""
+      isNaN(tempVal) ? "" : tempVal,
+      isNaN(humidityVal) ? "" : humidityVal,
+      pressureVal
     ]);
 
-    // Invalidate cache so next load is fresh
-    invalidateDatabaseCache();
-
+    // --- Pass normalized data to alert system ---
     checkData({
       date: Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy/MM/dd"),
       time: Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "HH:mm:ss"),
-      temperature: Number(data.temperature),
-      humidity: Number(data.humidity),
-      pressure: Number(data.pressure),
+      temperature: isNaN(tempVal) ? null : tempVal,
+      humidity: isNaN(humidityVal) ? null : humidityVal,
+      pressure: isNaN(pressureVal) ? null : pressureVal,
       location: Number(data.unit) - 1
     });
+
+    invalidateDatabaseCache();
+
 
     return ContentService
       .createTextOutput("Data added successfully")
@@ -249,6 +271,7 @@ function doPost(e) {
 function getLocations() {
   try {
     const alertInfo = getAlertInfo();
+    console.log("alertInfo in getLocations:", alertInfo);
     return alertInfo.map(row => row[0]).filter(Boolean);
   } catch (err) {
     console.log(`getLocations error: ${err.message || err}`);
@@ -292,7 +315,28 @@ function checkData(newReading) {
 }
 
 function handleAlertsForRow(i, newReading, row) {
-  const [locationName, tempHigh, tempLow, humHigh, humLow, presHigh, presLow, , recipients] = row;
+  const [
+    locationNameRaw,
+    tempHighRaw, tempLowRaw,
+    humHighRaw, humLowRaw,
+    presHighRaw, presLowRaw,
+    , recipientsRaw
+  ] = row;
+
+  const locationName = locationNameRaw;
+  const tempHigh = Number(tempHighRaw);
+  const tempLow = Number(tempLowRaw);
+  const humHigh = Number(humHighRaw);
+  const humLow = Number(humLowRaw);
+  const presHigh = Number(presHighRaw);
+  const presLow = Number(presLowRaw);
+
+  const recipients = Array.isArray(recipientsRaw)
+    ? recipientsRaw
+    : (typeof recipientsRaw === "string"
+      ? recipientsRaw.split(/[;,]/).map(s => s.trim()).filter(Boolean)
+      : []);
+
   const { temperature: temp, humidity: hum, pressure: pres } = newReading;
 
   const checks = [
@@ -328,7 +372,7 @@ function handleAlertsForRow(i, newReading, row) {
   for (const { value, high, low, activeArray, alertFn, clearFn } of checks) {
     if (value == null || value === "" || isNaN(value)) continue;
 
-    if (value >= high || value <= low) {
+    if (!isNaN(value) && !isNaN(high) && !isNaN(low) && (value >= high || value <= low)) {
       if (!activeArray[i]) {
         activeArray[i] = true;
         alertFn(locationName, recipients, newReading);
@@ -410,7 +454,7 @@ function pressureAlert(locationName, recipients, newReading) {
   const body = `Date: ${newReading.date}
 Time: ${newReading.time}
 Location: ${locationName}
-Reading: ${newReading.pressure} hPa`;
+Reading: ${newReading.pressure} Pa`;
 
   safeSendEmail(recipients, subject, body);
 }
@@ -421,7 +465,7 @@ function clearPressureAlert(locationName, recipients, newReading) {
   const body = `Date: ${newReading.date}
 Time: ${newReading.time}
 Location: ${locationName}
-Reading: ${newReading.pressure} hPa`;
+Reading: ${newReading.pressure} Pa`;
 
   safeSendEmail(recipients, subject, body);
 }
