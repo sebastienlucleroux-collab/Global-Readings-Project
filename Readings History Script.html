@@ -155,6 +155,7 @@
       if (all[index]) {
         const sensorData = all[index].map(r => ({ date: r[0], time: r[1], temperature: r[2], humidity: r[3], pressure: r[4] }));
         table.replaceData(sensorData);
+        filterData();
         return;
       }
     }
@@ -168,6 +169,7 @@
           date, time, temperature: temp, humidity: hum, pressure: pres
         })) || [];
         safeReplaceTableData(sensorRows);
+        filterData();
       })
       .withFailureHandler(err => {
         console.error("Error fetching all data:", err);
@@ -188,6 +190,71 @@
         try { table.off && table.off("tableBuilt", handler); } catch (e) { }
       };
       if (table.on) table.on("tableBuilt", handler);
+    }
+  }
+
+  function filterData() {
+    google.script.run
+      .withSuccessHandler(function (result) {
+        alertInfo = result;
+        console.log("alert info:", alertInfo);
+        setCustomFilter();
+      })
+      .withFailureHandler(function (error) {
+        console.error("Error fetching alert info:", error);
+      })
+      .getAlertInfo();
+  }
+
+  function setCustomFilter() {
+    table.clearFilter();
+
+    const filterType = document.getElementById("readingFilter").value;
+    const locationIndex = Number(document.getElementById("locationSelector").value);
+
+    if (filterType === "none" || isNaN(locationIndex)) {
+      console.log("No filter applied.");
+      return;
+    }
+
+    let customRangeFilter = null;
+
+    if (filterType === "temperature") {
+      customRangeFilter = function (data) {
+        const raw = data.temperature;
+        if (raw === "N/A" || raw === "" || raw == null) return false;
+        const value = parseFloat(raw);
+        if (isNaN(value)) return false;
+        const lowerBound = alertInfo[locationIndex][1];
+        const upperBound = alertInfo[locationIndex][0];
+        return value < lowerBound || value > upperBound;
+      };
+    } else if (filterType === "humidity") {
+      customRangeFilter = function (data) {
+        const raw = data.humidity;
+        if (raw === "N/A" || raw === "" || raw == null) return false;
+        const value = parseFloat(raw);
+        if (isNaN(value)) return false;
+        const lowerBound = alertInfo[locationIndex][3];
+        const upperBound = alertInfo[locationIndex][2];
+        // humidity stored as %, bounds likely in fraction (0–1)
+        return (value / 100) < lowerBound || (value / 100) > upperBound;
+      };
+    } else if (filterType === "pressure") {
+      customRangeFilter = function (data) {
+        const raw = data.pressure;
+        if (raw === "N/A" || raw === "" || raw == null) return false;
+        const value = parseFloat(raw);
+        if (isNaN(value)) return false;
+        const lowerBound = alertInfo[locationIndex][5];
+        const upperBound = alertInfo[locationIndex][4];
+        return value < lowerBound || value > upperBound;
+      };
+    }
+
+    if (customRangeFilter) {
+      table.setFilter(customRangeFilter);
+      console.log(`Filter applied for: ${filterType}`);
     }
   }
 </script>
