@@ -225,8 +225,8 @@
         if (raw === "N/A" || raw === "" || raw == null) return false;
         const value = parseFloat(raw);
         if (isNaN(value)) return false;
-        const lowerBound = alertInfo[locationIndex][1];
-        const upperBound = alertInfo[locationIndex][0];
+        const lowerBound = alertInfo[locationIndex][2];
+        const upperBound = alertInfo[locationIndex][1];
         return value < lowerBound || value > upperBound;
       };
     } else if (filterType === "humidity") {
@@ -235,8 +235,8 @@
         if (raw === "N/A" || raw === "" || raw == null) return false;
         const value = parseFloat(raw);
         if (isNaN(value)) return false;
-        const lowerBound = alertInfo[locationIndex][3];
-        const upperBound = alertInfo[locationIndex][2];
+        const lowerBound = alertInfo[locationIndex][4];
+        const upperBound = alertInfo[locationIndex][3];
         // humidity stored as %, bounds likely in fraction (0–1)
         return (value / 100) < lowerBound || (value / 100) > upperBound;
       };
@@ -246,8 +246,8 @@
         if (raw === "N/A" || raw === "" || raw == null) return false;
         const value = parseFloat(raw);
         if (isNaN(value)) return false;
-        const lowerBound = alertInfo[locationIndex][5];
-        const upperBound = alertInfo[locationIndex][4];
+        const lowerBound = alertInfo[locationIndex][6];
+        const upperBound = alertInfo[locationIndex][5];
         return value < lowerBound || value > upperBound;
       };
     }
