@@ -1,3 +1,5 @@
+const TEST_MODE = false; // set to true to enable test mode (no emails sent)
+
 /** ---------- Utility Helpers ---------- **/
 
 function getSheet(name) {
@@ -41,7 +43,7 @@ function getDatabaseCache_() {
     try {
       return JSON.parse(cached);
     } catch (e) {
-      Logger.log("Cache parse failed, using backup cache");
+      console.log("Cache parse failed, using backup cache");
     }
   }
   if (globalThis.__readingsCache) {
@@ -164,18 +166,42 @@ function parseTimestamp_(value) {
 
 /** ---------- Alerts Handling ---------- **/
 
+let alertInfoCache = null;
+
 function getAlertInfo() {
+  if (alertInfoCache) return alertInfoCache;
+
+  const cache = CacheService.getScriptCache();
+  const cachedData = cache.get("alert_info_cached");
+  if (cachedData) {
+    try { alertInfoCache = JSON.parse(cachedData); return alertInfoCache; }
+    catch (e) { console.log("Alert cache parse failed, refreshing"); }
+  }
+
   const sheet = getSheet("Alert Info");
-  const alertRange = sheet.getRange(2, 1, 11, 9).getValues();
+  const lastRow = sheet.getLastRow();
+  const numRows = Math.max(0, lastRow - 1);
+  if (numRows === 0) return [];
+
+  const alertRange = sheet.getRange(2, 1, numRows, 9).getValues();
 
   alertRange.forEach((row, i) => {
     if (typeof row[8] === "string") {
-      alertRange[i][8] = row[8].split(",").map(email => email.trim());
+      alertRange[i][8] = row[8].split(/[;,]/).map(s => s.trim()).filter(Boolean);
     }
   });
 
-  return alertRange;
+  alertInfoCache = alertRange;
+  try { cache.put("alert_info_cached", JSON.stringify(alertRange), 300); } catch (e) { /* ignore */ }
+
+  return alertInfoCache;
 }
+
+function invalidateAlertInfoCache() {
+  alertInfoCache = null;
+  try { CacheService.getScriptCache().remove("alert_info_cached"); } catch (e) { /* ignore */ }
+}
+
 
 /** ---------- Data Upload (ESP32) ---------- **/
 
@@ -200,6 +226,15 @@ function doPost(e) {
     // Invalidate cache so next load is fresh
     invalidateDatabaseCache();
 
+    checkData({
+      date: Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy/MM/dd"),
+      time: Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "HH:mm:ss"),
+      temperature: Number(data.temperature),
+      humidity: Number(data.humidity),
+      pressure: Number(data.pressure),
+      location: Number(data.unit) - 1
+    });
+
     return ContentService
       .createTextOutput("Data added successfully")
       .setMimeType(ContentService.MimeType.TEXT);
@@ -216,7 +251,228 @@ function getLocations() {
     const alertInfo = getAlertInfo();
     return alertInfo.map(row => row[0]).filter(Boolean);
   } catch (err) {
-    Logger.log(`getLocations error: ${err.message || err}`);
+    console.log(`getLocations error: ${err.message || err}`);
     return [];
   }
+}
+/** ---------- Alerts Handling (Merged from Alert.js) ---------- **/
+
+// Track active alerts to prevent duplicate notifications
+let temperatureAlertActive = [];
+let humidityAlertActive = [];
+let pressureAlertActive = [];
+
+/**
+ * Core alert checking logic, called from doPost(e).
+ * newReading = { date, time, temperature, humidity, pressure, location }
+ */
+function checkData(newReading) {
+  if (!newReading || newReading.location == null || isNaN(newReading.location)) {
+    console.log("checkData: invalid reading or missing location");
+    return;
+  }
+
+  const alertInfo = getAlertInfo();
+  const totalLocations = alertInfo.length;
+
+  // resize if needed
+  if (temperatureAlertActive.length !== totalLocations) {
+    temperatureAlertActive = Array(totalLocations).fill(false);
+    humidityAlertActive = Array(totalLocations).fill(false);
+    pressureAlertActive = Array(totalLocations).fill(false);
+  }
+
+
+  for (let i = 0; i < alertInfo.length; i++) {
+    if (newReading.location !== i) continue;
+
+    const row = alertInfo[i];
+    handleAlertsForRow(i, newReading, row);
+  }
+}
+
+function handleAlertsForRow(i, newReading, row) {
+  const [locationName, tempHigh, tempLow, humHigh, humLow, presHigh, presLow, , recipients] = row;
+  const { temperature: temp, humidity: hum, pressure: pres } = newReading;
+
+  const checks = [
+    {
+      key: "temperature",
+      value: temp,
+      high: tempHigh,
+      low: tempLow,
+      activeArray: temperatureAlertActive,
+      alertFn: temperatureAlert,
+      clearFn: clearTemperatureAlert,
+    },
+    {
+      key: "humidity",
+      value: hum,
+      high: humHigh,
+      low: humLow,
+      activeArray: humidityAlertActive,
+      alertFn: humidityAlert,
+      clearFn: clearHumidityAlert,
+    },
+    {
+      key: "pressure",
+      value: pres,
+      high: presHigh,
+      low: presLow,
+      activeArray: pressureAlertActive,
+      alertFn: pressureAlert,
+      clearFn: clearPressureAlert,
+    },
+  ];
+
+  for (const { value, high, low, activeArray, alertFn, clearFn } of checks) {
+    if (value == null || value === "" || isNaN(value)) continue;
+
+    if (value >= high || value <= low) {
+      if (!activeArray[i]) {
+        activeArray[i] = true;
+        alertFn(locationName, recipients, newReading);
+      }
+    } else if (activeArray[i]) {
+      activeArray[i] = false;
+      clearFn(locationName, recipients, newReading);
+    }
+  }
+}
+
+/** ---------- Safe Email Helper ---------- **/
+function safeSendEmail(recipients, subject, body) {
+  if (TEST_MODE) {
+    console.log(`[TEST_MODE] Email suppressed → To: ${recipients.join(", ")} | Subject: ${subject}`);
+    return;
+  }
+  try {
+    MailApp.sendEmail({
+      to: recipients.join(","),
+      subject,
+      body,
+    });
+  } catch (err) {
+    console.log(`Email send failed for ${recipients}: ${err.message}`);
+  }
+}
+
+
+/** ---------- Individual Alert Handlers ---------- **/
+
+// 🚨 Temperature alert triggered
+function temperatureAlert(locationName, recipients, newReading) {
+  const subject = `Abnormal Temperature Reading Detected`;
+  const body = `Date: ${newReading.date}
+Time: ${newReading.time}
+Location: ${locationName}
+Reading: ${newReading.temperature}°C`;
+
+  safeSendEmail(recipients, subject, body);
+}
+
+// ✅ Temperature alert cleared
+function clearTemperatureAlert(locationName, recipients, newReading) {
+  const subject = `Abnormal Temperature Reading No Longer Detected`;
+  const body = `Date: ${newReading.date}
+Time: ${newReading.time}
+Location: ${locationName}
+Reading: ${newReading.temperature}°C`;
+
+  safeSendEmail(recipients, subject, body);
+}
+
+// 🚨 Humidity alert triggered
+function humidityAlert(locationName, recipients, newReading) {
+  const subject = `Abnormal Humidity Reading Detected`;
+  const body = `Date: ${newReading.date}
+Time: ${newReading.time}
+Location: ${locationName}
+Reading: ${(newReading.humidity * 100).toFixed(1)}%`;
+
+  safeSendEmail(recipients, subject, body);
+}
+
+// ✅ Humidity alert cleared
+function clearHumidityAlert(locationName, recipients, newReading) {
+  const subject = `Abnormal Humidity Reading No Longer Detected`;
+  const body = `Date: ${newReading.date}
+Time: ${newReading.time}
+Location: ${locationName}
+Reading: ${(newReading.humidity * 100).toFixed(1)}%`;
+
+  safeSendEmail(recipients, subject, body);
+}
+
+// 🚨 Pressure alert triggered
+function pressureAlert(locationName, recipients, newReading) {
+  const subject = `Abnormal Pressure Reading Detected`;
+  const body = `Date: ${newReading.date}
+Time: ${newReading.time}
+Location: ${locationName}
+Reading: ${newReading.pressure} hPa`;
+
+  safeSendEmail(recipients, subject, body);
+}
+
+// ✅ Pressure alert cleared
+function clearPressureAlert(locationName, recipients, newReading) {
+  const subject = `Abnormal Pressure Reading No Longer Detected`;
+  const body = `Date: ${newReading.date}
+Time: ${newReading.time}
+Location: ${locationName}
+Reading: ${newReading.pressure} hPa`;
+
+  safeSendEmail(recipients, subject, body);
+}
+
+function testAlertSystem() {
+  console.log("=== Running testAlertSystem ===");
+
+  // Local test mode override (no real emails sent)
+  const localTestMode = true;
+
+  // Wrap safeSendEmail temporarily
+  const originalSafeSendEmail = safeSendEmail;
+  safeSendEmail = function (recipients, subject, body) {
+    if (localTestMode) {
+      console.log(`[TEST_MODE] Email suppressed → To: ${recipients.join(", ")} | Subject: ${subject}`);
+      console.log("Email body preview:\n" + body);
+      return;
+    }
+    originalSafeSendEmail(recipients, subject, body);
+  };
+
+  // Optional: ensure alert data is fresh
+  invalidateAlertInfoCache();
+
+  // Step 1: Trigger alert (simulate abnormal temperature)
+  const fakeTriggerReading = {
+    date: Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy/MM/dd"),
+    time: Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "HH:mm:ss"),
+    temperature: 99,   // intentionally high to trigger
+    humidity: 0.85,    // normal
+    pressure: 101325,  // normal
+    location: 0,       // first location (index 0)
+  };
+
+  console.log("→ Simulating abnormal reading to TRIGGER alert");
+  checkData(fakeTriggerReading);
+
+  // Step 2: Wait a moment, then simulate normal recovery
+  Utilities.sleep(1000); // 1 second delay for clarity in logs
+
+  const fakeClearReading = {
+    ...fakeTriggerReading,
+    temperature: 25, // normal range → should clear alert
+    time: Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "HH:mm:ss"),
+  };
+
+  console.log("→ Simulating normal reading to CLEAR alert");
+  checkData(fakeClearReading);
+
+  console.log("=== Test complete ===");
+
+  // Restore original email sender
+  safeSendEmail = originalSafeSendEmail;
 }
