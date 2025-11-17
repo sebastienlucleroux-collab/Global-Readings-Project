@@ -108,6 +108,16 @@
       return;
     }
 
+    function getDynamicPageSize() {
+      const screenHeight = window.innerHeight;
+
+      if (screenHeight > 1000) return 20; // large desktop
+      if (screenHeight > 800) return 15;  // small desktop / landscape tablet
+      if (screenHeight > 650) return 10;  // portrait tablet
+      if (screenHeight > 500) return 7;   // large phone
+      return 5;                           // small phone
+    }
+
     table = new Tabulator("#example-table", {
       data: [],
       layout: "fitColumns",
@@ -115,7 +125,7 @@
       addRowPos: "top",
       history: true,
       pagination: "local",
-      paginationSize: 15,
+      paginationSize: getDynamicPageSize(),
       paginationCounter: "rows",
       movableColumns: true,
       initialSort: [{ column: "date", dir: "desc" }],
@@ -132,6 +142,17 @@
     table.on("tableBuilt", () => {
       changeTableData();
     });
+    table.on("dataLoaded", () => {
+      const newHeight = Math.max(300, window.innerHeight * 0.45);
+      table.setHeight(newHeight);
+    });
+
+    window.addEventListener("resize", () => {
+      if (table) {
+        table.setHeight(Math.max(300, window.innerHeight * 0.45));
+      }
+    });
+
   }
 
   function changeTableData() {

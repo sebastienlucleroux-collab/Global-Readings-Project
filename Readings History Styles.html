@@ -1,140 +1,75 @@
 <style>
-  /* ---------- Global Layout ---------- */
+  /* === Global === */
   body {
-    background-color: #9d9d9d;
-    font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue",
-      "Noto Sans", "Liberation Sans", Arial, sans-serif;
-    color: #000 !important;
-    /* all text black */
-    text-align: center;
+    background-color: #9d9d9d !important;
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    color: #000;
     margin: 0;
     padding: 0;
+    text-align: center;
   }
 
-  /* ---------- Header ---------- */
+  /* === Header / Title === */
   #titleContainer {
     text-align: center;
   }
 
   #globalLogo {
-    height: 100px;
+    height: 120px;
   }
 
-  /* ---------- Title Style (match Latest Readings) ---------- */
-  h2 {
+  #pageTitle {
     font-size: 2rem;
-    /* same size */
     font-weight: 700;
-    /* bold */
-    text-align: center;
-    /* centered */
-    margin-bottom: 25px;
-    /* spacing below title */
-    color: #000000;
-    /* black text */
+    margin-left: 10px;
   }
 
+  /* === Select Inputs === */
+  .form-label {
+    color: #000;
+  }
 
-  /* ---------- Table ---------- */
+  /* === Tabulator Table === */
   #example-table {
-    width: 100%;
-    margin: 0 auto;
-    background-color: #f8f9fa;
-    border-radius: 0.5rem;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    background: #fff;
+    border-radius: 6px;
+    min-height: 300px;
+    height: auto !important;
+    /* allow dynamic resizing */
   }
 
-  .tabulator {
-    border: none !important;
+  /* === Buttons === */
+  .btn {
     font-size: 1rem;
-    color: #000 !important;
-    /* black table text */
+    font-weight: 500;
   }
 
-  .tabulator-header {
-    background-color: #0d6efd !important;
-    /* Bootstrap blue header */
-    color: #fff !important;
-    font-weight: 600;
-  }
-
-  .tabulator-row {
-    background-color: #ffffff;
-  }
-
-  .tabulator-row:nth-child(even) {
-    background-color: #f2f2f2;
-  }
-
-  .tabulator-row:hover {
-    background-color: #e7f1ff !important;
-  }
-
-  /* ---------- Dropdowns ---------- */
-  select.form-select {
-    min-width: 180px;
-    color: #000 !important;
-  }
-
-  /* ---------- Buttons (Updated) ---------- */
-  button,
-  .navButton {
+  .btn-primary {
     background-color: #0d6efd;
-    color: #fff;
     border: none;
-    border-radius: 10px;
-    font-size: 1.15rem;
-    /* bigger text */
-    font-weight: 600;
-    /* stronger weight */
-    padding: 12px 28px;
-    /* bigger button */
+  }
+
+  .btn-primary:hover {
+    background-color: #0b5ed7;
+  }
+
+  .navButton {
+    background-color: #0d6efd !important;
+    color: #fff !important;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 16px;
+    font-size: 1rem;
+    font-weight: 500;
     cursor: pointer;
     text-decoration: none;
-    transition: background-color 0.15s ease-in-out, transform 0.1s ease-in-out;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.25);
-    /* same button shadow as Latest Readings */
   }
 
-  button:hover,
   .navButton:hover {
-    background-color: #0b5ed7;
-    text-decoration: none;
+    background-color: #0b5ed7 !important;
   }
 
-  button:active,
   .navButton:active {
-    background-color: #0a58ca;
-    transform: scale(0.98);
-  }
-
-  /* Mobile: full width buttons to match Latest Readings behavior */
-  @media (max-width: 768px) {
-
-    button,
-    .navButton {
-      width: 100%;
-    }
-  }
-
-
-  /* ---------- Responsive ---------- */
-  @media (max-width: 768px) {
-    #pageTitle {
-      font-size: 1.3rem;
-    }
-
-    select.form-select {
-      width: 100%;
-    }
-
-    button,
-    .navButton {
-      width: 100%;
-    }
-
-    .mt-4.d-flex {
-      flex-direction: column;
-    }
+    background-color: #0a58ca !important;
   }
 </style>
