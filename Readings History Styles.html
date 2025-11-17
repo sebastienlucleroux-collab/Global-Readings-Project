@@ -33,9 +33,16 @@
   #example-table {
     background: #fff;
     border-radius: 6px;
-    min-height: 300px;
     height: auto !important;
     /* allow dynamic resizing */
+  }
+
+  .tabulator-tableholder {
+    max-height: none !important;
+  }
+
+  .tabulator {
+    height: auto !important;
   }
 
   /* === Buttons === */
@@ -71,5 +78,13 @@
 
   .navButton:active {
     background-color: #0a58ca !important;
+  }
+
+  #locationSelector,
+  #readingFilter {
+    max-width: 350px;
+    /* adjust this number to taste */
+    margin-left: auto;
+    margin-right: auto;
   }
 </style>
