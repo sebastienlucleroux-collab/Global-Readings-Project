@@ -13,11 +13,11 @@ function safeNumber(value) {
 
 /** ---------- View Rendering ---------- **/
 
-const PAGE_WHITELIST = ["Latest Readings", "Readings History"]; // add allowed files
+const PAGE_WHITELIST = ["Latest-Readings", "Readings-History"]; // add allowed files
 
 function doGet(e) {
-  const requested = (e && e.parameter && e.parameter.page) ? e.parameter.page : "Latest Readings";
-  const page = PAGE_WHITELIST.includes(requested) ? requested : "Latest Readings";
+  const requested = (e && e.parameter && e.parameter.page) ? e.parameter.page : "Latest-Readings";
+  const page = PAGE_WHITELIST.includes(requested) ? requested : "Latest-Readings";
   const template = HtmlService.createTemplateFromFile(page);
   return template.evaluate().setTitle("Global Readings Project");
 }
