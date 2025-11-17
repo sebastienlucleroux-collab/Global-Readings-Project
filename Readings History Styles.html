@@ -1,135 +1,140 @@
 <style>
+  /* ---------- Global Layout ---------- */
   body {
-    font-family: Arial;
-    background-color: rgb(157, 157, 157);
+    background-color: #9d9d9d;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue",
+      "Noto Sans", "Liberation Sans", Arial, sans-serif;
+    color: #000 !important;
+    /* all text black */
+    text-align: center;
     margin: 0;
-    padding: 20px;
+    padding: 0;
   }
 
+  /* ---------- Header ---------- */
   #titleContainer {
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    font-size: 40px;
-    margin-bottom: 20px;
+    text-align: center;
   }
 
   #globalLogo {
-    height: 250px;
+    height: 100px;
   }
 
-  /* Center and size the table area */
+  /* ---------- Title Style (match Latest Readings) ---------- */
+  h2 {
+    font-size: 2rem;
+    /* same size */
+    font-weight: 700;
+    /* bold */
+    text-align: center;
+    /* centered */
+    margin-bottom: 25px;
+    /* spacing below title */
+    color: #000000;
+    /* black text */
+  }
+
+
+  /* ---------- Table ---------- */
   #example-table {
-    margin: 60px auto 40px auto;
-    width: 90%;
-    max-width: 1200px;
-    background-color: white;
-    border: 1px solid black;
-    border-radius: 6px;
+    width: 100%;
+    margin: 0 auto;
+    background-color: #f8f9fa;
+    border-radius: 0.5rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   }
 
-  /* Override Tabulator’s default colors */
   .tabulator {
-    border: 1px solid black !important;
-    font-size: 18px !important;
-    background-color: white !important;
+    border: none !important;
+    font-size: 1rem;
+    color: #000 !important;
+    /* black table text */
   }
 
-  .tabulator .tabulator-header {
-    background-color: #e9f2fb !important;
-    font-weight: bold !important;
-    font-size: 20px !important;
+  .tabulator-header {
+    background-color: #0d6efd !important;
+    /* Bootstrap blue header */
+    color: #fff !important;
+    font-weight: 600;
+  }
+
+  .tabulator-row {
+    background-color: #ffffff;
   }
 
   .tabulator-row:nth-child(even) {
-    background-color: #f9fbfd !important;
+    background-color: #f2f2f2;
   }
 
-  .tabulator-cell {
-    border: 1px solid #ccc !important;
-    text-align: center !important;
-    padding: 10px !important;
+  .tabulator-row:hover {
+    background-color: #e7f1ff !important;
   }
 
-  /* Dropdowns */
-  #locationSelector,
-  #readingFilter {
-    font-size: 24px;
-    padding: 8px 10px;
-    border: 1px solid #000;
-    border-radius: 4px;
-    margin: 10px;
+  /* ---------- Dropdowns ---------- */
+  select.form-select {
+    min-width: 180px;
+    color: #000 !important;
   }
 
-  /* Buttons */
-  .refresh-btn,
-  input[type="button"] {
-    background-color: #0077cc;
-    color: white;
+  /* ---------- Buttons (Updated) ---------- */
+  button,
+  .navButton {
+    background-color: #0d6efd;
+    color: #fff;
     border: none;
-    padding: 10px 16px;
-    border-radius: 6px;
+    border-radius: 10px;
+    font-size: 1.15rem;
+    /* bigger text */
+    font-weight: 600;
+    /* stronger weight */
+    padding: 12px 28px;
+    /* bigger button */
     cursor: pointer;
-    transition: background-color 0.2s ease;
-    font-size: 18px;
-  }
-
-  .refresh-btn:hover,
-  input[type="button"]:hover {
-    background-color: #005fa3;
-  }
-
-  .button-link {
-    display: inline-block;
-    padding: 4px 10px;
-    /* same padding as classic input buttons */
-    background-color: #f0f0f0;
-    /* light gray like default inputs */
-    color: #000;
-    /* black text */
-    border: 1px solid #ccc;
-    /* subtle gray border */
-    border-radius: 4px;
-    /* soft rounded corners */
-    font-size: 13px;
-    font-family: inherit;
-    /* match surrounding text */
-    text-align: center;
     text-decoration: none;
-    /* remove underline */
-    cursor: pointer;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-    /* subtle depth like input */
+    transition: background-color 0.15s ease-in-out, transform 0.1s ease-in-out;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.25);
+    /* same button shadow as Latest Readings */
   }
 
-  .button-link:hover {
-    background-color: #e6e6e6;
-    /* same hover color as default inputs */
+  button:hover,
+  .navButton:hover {
+    background-color: #0b5ed7;
+    text-decoration: none;
   }
 
-  .button-link:active {
-    background-color: #dcdcdc;
-    /* pressed state */
-    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.2);
+  button:active,
+  .navButton:active {
+    background-color: #0a58ca;
+    transform: scale(0.98);
   }
 
-  p {
-    font-size: 24px;
-    margin: 10px;
+  /* Mobile: full width buttons to match Latest Readings behavior */
+  @media (max-width: 768px) {
+
+    button,
+    .navButton {
+      width: 100%;
+    }
   }
 
-  @media (max-width: 900px) {
-    #example-table {
+
+  /* ---------- Responsive ---------- */
+  @media (max-width: 768px) {
+    #pageTitle {
+      font-size: 1.3rem;
+    }
+
+    select.form-select {
       width: 100%;
     }
 
-    .tabulator {
-      font-size: 14px !important;
+    button,
+    .navButton {
+      width: 100%;
     }
 
-    #locationSelector,
-    #readingFilter {
-      font-size: 18px;
+    .mt-4.d-flex {
+      flex-direction: column;
     }
   }
 </style>
