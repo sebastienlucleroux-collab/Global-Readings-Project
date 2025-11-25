@@ -1,49 +1,48 @@
 <script>
+
   let latestData = {};
   let allData = null;
 
-  const cells = {
-    date: document.getElementById("dateCell"),
-    time: document.getElementById("timeCell"),
-    temperature: document.getElementById("temperatureCell"),
-    humidity: document.getElementById("humidityCell"),
-    pressure: document.getElementById("pressureCell"),
-  };
+  // will be set after DOM loads
+  let cells = {};
 
   document.addEventListener("DOMContentLoaded", async () => {
-    try {
-      console.log("⏳ Populating locations...");
-      await populateLocationDropdown_latest();
-      console.log("✅ Locations populated");
-    } catch (error) {
-      console.error("populateLocationDropdown_latest failed:", error);
-    }
 
-    // --- Restore saved selection or default ---
-    const selector = document.getElementById("locationSelector");
-    const params = new URLSearchParams(window.location.search);
-    const qrSensor = params.get("sensor");
-    if (qrSensor !== null) sessionStorage.setItem("selectedSensor", qrSensor);
+    /* ============================================================
+       DOM ELEMENTS — NOW SAFE
+       ============================================================ */
+    cells = {
+      date: document.getElementById("dateCell"),
+      time: document.getElementById("timeCell"),
+      temperature: document.getElementById("temperatureCell"),
+      humidity: document.getElementById("humidityCell"),
+      pressure: document.getElementById("pressureCell"),
+    };
 
-    const savedSensor = sessionStorage.getItem("selectedSensor");
-    if (selector) {
-      const validOption = selector.querySelector(`option[value="${savedSensor}"]`);
-      if (savedSensor && validOption) selector.value = savedSensor;
-      else selector.selectedIndex = 0;
-    }
+    console.log("✔ Cells initialized");
 
-    // --- Now load readings ---
+    /* ============================================================
+       Load locations first
+       ============================================================ */
+    console.log("⏳ Populating locations...");
+    await populateLocationDropdown();
+    console.log("✅ Locations loaded");
+
+    /* ============================================================
+       Load latest data
+       ============================================================ */
     console.log("⏳ Fetching latest readings...");
     await loadLatestThenAllData();
     console.log("✅ Latest readings loaded");
 
-    // --- Update table AFTER everything is ready ---
-    if (selector && selector.value !== "") {
-      console.log("📊 Updating table after data & dropdown ready");
-      updateTable();
-    }
+    /* ============================================================
+       Preselect SENSOR from URL
+       ============================================================ */
+    applyURLSensorSelection();
 
-    // --- Hook refresh button ---
+    /* ============================================================
+       Refresh button
+       ============================================================ */
     const refreshBtn = document.getElementById("refreshDataBtn");
     if (refreshBtn) {
       refreshBtn.addEventListener("click", async () => {
@@ -65,18 +64,52 @@
     }
   });
 
-  // 🔽 move these outside so other functions can use them too
-  function setRefreshButtonState(isLoading) {
-    const refreshBtn = document.getElementById("refreshDataBtn");
-    if (!refreshBtn) return;
-    refreshBtn.textContent = isLoading ? "Refreshing..." : "🔄 Refresh Data";
-    refreshBtn.disabled = isLoading;
+
+  /* ============================================================
+     URL SENSOR PRE-SELECTION — 100% RELIABLE NOW
+     ============================================================ */
+  function applyURLSensorSelection() {
+    const sensorFromURL = window.SENSOR_FROM_SERVER;
+
+    if (sensorFromURL === null || sensorFromURL === "") return;
+
+    console.log("🎯 Attempting URL preselect:", sensorFromURL);
+
+    const selector = document.getElementById("locationSelector");
+    if (!selector) {
+      console.error("❌ Selector missing");
+      return;
+    }
+
+    const wait = setInterval(() => {
+      if (selector.options.length > 1) {
+        clearInterval(wait);
+        selector.value = String(sensorFromURL);
+        console.log("🎯 PRESELECTED:", sensorFromURL);
+        updateTable();
+      }
+    }, 80);
   }
 
+
+  /* ============================================================
+     Refresh button helper
+     ============================================================ */
+  function setRefreshButtonState(isLoading) {
+    const btn = document.getElementById("refreshDataBtn");
+    if (!btn) return;
+    btn.textContent = isLoading ? "Refreshing..." : "Refresh Data";
+    btn.disabled = isLoading;
+  }
+
+
+  /* ============================================================
+     Fetch Latest Sensor Data
+     ============================================================ */
   function fetchLatestSensorData() {
     return new Promise((resolve, reject) => {
       google.script.run
-        .withSuccessHandler(resolve)
+        .withSuccessHandler(resolve)   // <- actually resolve the data
         .withFailureHandler(reject)
         .getLatestSensorData();
     });
@@ -86,9 +119,15 @@
     sessionStorage.setItem("latestSensorData", JSON.stringify(data || {}));
   }
 
-  async function populateLocationDropdown_latest() {
+
+  /* ============================================================
+     Populate dropdown from server
+     ============================================================ */
+  async function populateLocationDropdown() {
     const selector = document.getElementById("locationSelector");
     if (!selector) return;
+
+    // check session cache
     const cached = sessionStorage.getItem("locationList");
     if (cached) {
       try {
@@ -97,14 +136,12 @@
           fillSelectWithLocations(selector, parsed);
           return;
         }
-      } catch (error) {
-        console.warn("Invalid cached location list, refetching...");
+      } catch {
         sessionStorage.removeItem("locationList");
       }
     }
 
-
-
+    // no cache → fetch
     return new Promise((resolve, reject) => {
       google.script.run
         .withSuccessHandler(locations => {
@@ -113,20 +150,15 @@
           fillSelectWithLocations(selector, locations);
           resolve();
         })
-        .withFailureHandler(error => {
-          console.error("getLocations failed:", error);
-          reject(error);
-        })
+        .withFailureHandler(reject)
         .getLocations();
     });
   }
 
   function fillSelectWithLocations(selectElement, locations) {
-    // keep placeholder option (empty value)
     selectElement.querySelectorAll("option:not([value=''])").forEach(o => o.remove());
 
-    if (!Array.isArray(locations) || locations.length === 0) {
-      console.warn("⚠️ No sensor locations available.");
+    if (!locations.length) {
       const opt = document.createElement("option");
       opt.value = "";
       opt.textContent = "No locations available";
@@ -136,105 +168,79 @@
 
     locations.forEach((location, index) => {
       const opt = document.createElement("option");
-      opt.value = index;
+      opt.value = String(index);
       opt.textContent = location;
       selectElement.appendChild(opt);
     });
   }
 
+
+  /* ============================================================
+     Load latest + full database
+     ============================================================ */
   async function loadLatestThenAllData() {
     try {
-      console.log("🗃️ Checking cached latestSensorData...");
       const cached = sessionStorage.getItem("latestSensorData");
-      if (cached) {
-        latestData = JSON.parse(cached);
-        console.log("✅ Loaded from cache:", latestData);
-      } else {
-        console.log("ℹ️ No cached data found.");
+      if (cached) latestData = JSON.parse(cached);
+
+      const fresh = await fetchLatestSensorData();
+      if (fresh) {
+        latestData = fresh;
+        cacheLatestData(fresh);
       }
 
-      console.log("🌐 Fetching latest sensor data from server...");
-      const freshData = await fetchLatestSensorData();
-
-      if (freshData && Object.keys(freshData).length > 0) {
-        console.log("✅ Received new data:", freshData);
-        latestData = freshData;
-        cacheLatestData(freshData);
-      } else {
-        console.warn("⚠️ No new data received — using cached version.");
-      }
-
-      // ✅ Update table only once, after data is finalized
       updateTable();
 
-      // 🕒 Preload allSensorData quietly
       requestIdleCallback(() => {
-        console.log("💾 Preloading allSensorData in background...");
         google.script.run
           .withSuccessHandler(result => {
             allData = result || {};
             sessionStorage.setItem("allSensorData", JSON.stringify(allData));
-            console.log("✅ allSensorData cached.");
+            console.log(allData);
           })
-          .withFailureHandler(error => {
-            console.groupCollapsed("⚠️ [Latest Readings Preload]");
-            console.error("getAllSensorData failed:", error);
-            console.groupEnd();
-          })
+          .withFailureHandler(err => console.warn("getAllSensorData failed:", err))
           .getAllSensorData();
       });
-    } catch (error) {
-      console.error("❌ Failed to load latest readings:", error);
-      alert("⚠️ Could not load latest readings. Please refresh the page.");
+    } catch (err) {
+      console.error("❌ Failed to load latest readings:", err);
+      alert("Could not load latest readings. Please refresh.");
     }
   }
 
 
+  /* ============================================================
+     Update Table
+     ============================================================ */
   function updateTable() {
     const selector = document.getElementById("locationSelector");
     if (!selector) return;
 
     const index = selector.value;
-    sessionStorage.setItem("selectedSensor", index);
+    const reading = latestData[index];
 
-    const locationName = selector.options[selector.selectedIndex].text;
-    const lastReading = latestData[index];
-
-    // --- helper function defined first ---
-    function insertValues(reading) {
-      const [date, time, temp, hum, press] = reading;
+    function setCells([date, time, temp, hum, pressure]) {
       cells.date.textContent = date || "N/A";
       cells.time.textContent = time || "N/A";
       cells.temperature.textContent = temp || "N/A";
       cells.humidity.textContent = hum || "N/A";
 
-      const pressureHeader = document.getElementById("pressureHeader");
-      const pressureCell = cells.pressure;
+      const header = document.getElementById("pressureHeader");
 
-      if (press && press !== "N/A") {
-        pressureHeader?.classList.remove("hidden");
-        pressureCell.classList.remove("hidden");
-        pressureCell.textContent = press;
+      if (pressure && pressure !== "N/A") {
+        header.classList.remove("hidden");
+        cells.pressure.classList.remove("hidden");
+        cells.pressure.textContent = pressure;
       } else {
-        pressureHeader?.classList.add("hidden");
-        pressureCell.classList.add("hidden");
-        pressureCell.textContent = "";
+        header.classList.add("hidden");
+        cells.pressure.classList.add("hidden");
+        cells.pressure.textContent = "";
       }
     }
 
-    // --- now decide what to display ---
-    if (index === "" || index === null || index === undefined) {
-      console.log("ℹ️ No location selected yet — clearing table.");
-      insertValues(["", "", "", "", ""]);
-      return;
-    } else if (!lastReading || !Array.isArray(lastReading)) {
-      console.warn(`⚠️ No valid reading found for location: ${locationName}`);
-      insertValues(["N/A", "N/A", "N/A", "N/A", ""]);
-      return;
-    } else {
-      console.log(`✅ Populating table for ${locationName}:`, lastReading);
-      insertValues(lastReading);
-    }
+    if (index === "") return setCells(["", "", "", "", ""]);
+    if (!Array.isArray(reading)) return setCells(["N/A", "N/A", "N/A", "N/A", ""]);
+
+    setCells(reading);
   }
 
 </script>

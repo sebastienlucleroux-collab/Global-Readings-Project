@@ -19,6 +19,9 @@ function doGet(e) {
   const requested = (e && e.parameter && e.parameter.page) ? e.parameter.page : "Latest Readings";
   const page = PAGE_WHITELIST.includes(requested) ? requested : "Latest Readings";
   const template = HtmlService.createTemplateFromFile(page);
+  template.sensor = e.parameter.sensor || null;
+  console.log(">>> doGet SENSOR PARAM:", e.parameter.sensor);
+
   return template.evaluate().setTitle("Global Readings Project");
 }
 
@@ -72,6 +75,7 @@ function invalidateDatabaseCache() {
  */
 function getAllSensorData() {
   const data = getDatabaseCache_();
+  console.log(data);
   const result = {};
 
   data.forEach(row => {
@@ -81,7 +85,7 @@ function getAllSensorData() {
     const sensorIndex = Number(sensorRaw) - 1;
     if (isNaN(sensorIndex) || sensorIndex < 0) return;
 
-    const timestamp = parseTimestamp_(row[1]);
+    const timestamp = parseTimestamp(row[1]);
     if (!timestamp) {
       return;
     }
@@ -101,7 +105,7 @@ function getAllSensorData() {
       presRaw == null ? "N/A" : `${presRaw.toFixed(1)}Pa`
     ]);
   });
-
+  console.log(result);
   return result;
 }
 
@@ -119,7 +123,7 @@ function getLatestSensorData() {
     const sensorIndex = Number(sensorRaw) - 1;
     if (isNaN(sensorIndex) || sensorIndex < 0) return;
 
-    const timestamp = parseTimestamp_(row[1]);
+    const timestamp = parseTimestamp(row[1]);
     if (!timestamp) {
       return;
     }
@@ -154,20 +158,29 @@ function getLatestSensorData() {
 /**
  * Parses a timestamp value safely (supports Date or string).
  */
-function parseTimestamp_(value) {
+function parseTimestamp(value) {
   if (value instanceof Date && !isNaN(value.getTime())) return value;
+
   if (typeof value === "string") {
+    const parts = value.match(/(\d{1,2})\/(\d{1,2})\/(\d{4}) (\d{1,2}):(\d{2}):(\d{2})/);
+    if (parts) {
+      const [, dd, mm, yyyy, hh, min, ss] = parts.map(Number);
+      return new Date(yyyy, mm - 1, dd, hh, min, ss);
+    }
+    // fallback for other formats
     const parsed = Date.parse(value.replace(/-/g, "/").trim());
     if (!isNaN(parsed)) return new Date(parsed);
   }
-  // handle numeric serials (Sheets date serials)
+
   if (typeof value === "number" && value > 0) {
     const ms = (value - 25569) * 86400 * 1000;
     const d = new Date(ms);
     if (!isNaN(d.getTime())) return d;
   }
+
   return null;
 }
+
 
 
 /** ---------- Alerts Handling ---------- **/
@@ -175,33 +188,40 @@ function parseTimestamp_(value) {
 let alertInfoCache = null;
 
 function getAlertInfo() {
-  if (alertInfoCache) return alertInfoCache;
-
   const cache = CacheService.getScriptCache();
-  const cachedData = cache.get("alert_info_cached");
-  if (cachedData) {
-    try { alertInfoCache = JSON.parse(cachedData); return alertInfoCache; }
-    catch (e) { console.log("Alert cache parse failed, refreshing"); }
+  const cached = cache.get("alert_info_cached");
+
+  if (cached) {
+    try {
+      const parsed = JSON.parse(cached);
+      if (Array.isArray(parsed)) return parsed;
+    } catch (e) { }
   }
 
   const sheet = getSheet("Alert Info");
   const lastRow = sheet.getLastRow();
-  const numRows = Math.max(0, lastRow - 1);
-  if (numRows === 0) return [];
+  if (lastRow <= 1) return [];
 
-  const alertRange = sheet.getRange(2, 1, numRows, 9).getValues();
+  const numRows = lastRow - 1;
+  const rows = sheet.getRange(2, 1, numRows, 9).getValues();
 
-  alertRange.forEach((row, i) => {
+  // Clean email list (column 9)
+  rows.forEach((row, i) => {
     if (typeof row[8] === "string") {
-      alertRange[i][8] = row[8].split(/[;,]/).map(s => s.trim()).filter(Boolean);
+      rows[i][8] = row[8]
+        .split(/[,;]/)
+        .map(s => s.trim())
+        .filter(Boolean);
+    } else {
+      rows[i][8] = [];
     }
   });
 
-  alertInfoCache = alertRange;
-  try { cache.put("alert_info_cached", JSON.stringify(alertRange), 300); } catch (e) { /* ignore */ }
-
-  return alertInfoCache;
+  cache.put("alert_info_cached", JSON.stringify(rows), 300);
+  console.log(rows);
+  return rows;
 }
+
 
 function invalidateAlertInfoCache() {
   alertInfoCache = null;
@@ -212,6 +232,57 @@ function invalidateAlertInfoCache() {
 /** ---------- Data Upload (ESP32) ---------- **/
 
 function doPost(e) {
+  try {
+    // Parse JSON body from ESP32
+    const data = JSON.parse(e.postData.contents);
+
+    // (Optional) security key
+    const SECRET_KEY = "abc123";
+    if (data.key && data.key !== SECRET_KEY) {
+      return ContentService.createTextOutput("Unauthorized");
+    }
+
+    // Open the active spreadsheet and sheet
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Readings Database");
+
+    let pressureVal = Number(data.pressure); // Pa (no conversion)
+    if (isNaN(pressureVal)) pressureVal = "";
+
+    // Append new row with timestamp and data
+    sheet.appendRow([
+      data.unit || "",         // sensor number
+      new Date(),              // Timestamp
+      data.temperature || "",  // Temperature value
+      data.humidity || "",    // Humidity value
+      pressureVal || ""      // pressure value
+    ]);
+
+    // --- Pass normalized data to alert system ---
+    checkData({
+      date: Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy/MM/dd"),
+      time: Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "HH:mm:ss"),
+      temperature: isNaN(data.temperature) ? null : data.temperature,
+      humidity: isNaN(data.humidity) ? null : data.humidity,
+      pressure: isNaN(pressureVal) ? null : pressureVal,
+      location: Number(data.unit) - 1
+    });
+
+    invalidateDatabaseCache();
+
+    // Send confirmation back to ESP32
+    return ContentService
+      .createTextOutput("Data added successfully")
+      .setMimeType(ContentService.MimeType.TEXT);
+
+  } catch (error) {
+    // Handle JSON or other errors
+    return ContentService
+      .createTextOutput("Error: " + error)
+      .setMimeType(ContentService.MimeType.TEXT);
+  }
+}
+
+/*function doPost(e) {
   try {
     const data = JSON.parse(e.postData.contents);
     const SECRET_KEY = "abc123";
@@ -266,55 +337,65 @@ function doPost(e) {
       .createTextOutput("Error: " + error)
       .setMimeType(ContentService.MimeType.TEXT);
   }
-}
+}*/
 
 function getLocations() {
   try {
     const alertInfo = getAlertInfo();
-    console.log("alertInfo in getLocations:", alertInfo);
-    return alertInfo.map(row => row[0]).filter(Boolean);
+
+    console.log("RAW alertInfo rows:", JSON.stringify(alertInfo));
+
+    // Extract column A values
+    const locations = alertInfo
+      .map(row => row[0])
+      .filter(v => typeof v === "string" && v.trim() !== "");
+
+    console.log("RETURNING LOCATIONS:", locations);
+    return locations;
+
   } catch (err) {
     console.log(`getLocations error: ${err.message || err}`);
     return [];
   }
 }
-/** ---------- Alerts Handling (Merged from Alert.js) ---------- **/
 
-// Track active alerts to prevent duplicate notifications
-let temperatureAlertActive = [];
-let humidityAlertActive = [];
-let pressureAlertActive = [];
+// Remove previous module-level alert arrays
 
-/**
- * Core alert checking logic, called from doPost(e).
- * newReading = { date, time, temperature, humidity, pressure, location }
- */
+function getActiveAlerts() {
+  const props = PropertiesService.getScriptProperties();
+  const json = props.getProperty("activeAlerts");
+  if (json) return JSON.parse(json);
+  return { temperature: [], humidity: [], pressure: [] };
+}
+
+function setActiveAlerts(active) {
+  PropertiesService.getScriptProperties().setProperty("activeAlerts", JSON.stringify(active));
+}
+
 function checkData(newReading) {
   if (!newReading || newReading.location == null || isNaN(newReading.location)) {
-    console.log("checkData: invalid reading or missing location");
     return;
   }
 
   const alertInfo = getAlertInfo();
-  const totalLocations = alertInfo.length;
-
-  // resize if needed
-  if (temperatureAlertActive.length !== totalLocations) {
-    temperatureAlertActive = Array(totalLocations).fill(false);
-    humidityAlertActive = Array(totalLocations).fill(false);
-    pressureAlertActive = Array(totalLocations).fill(false);
-  }
-
+  const active = getActiveAlerts();
 
   for (let i = 0; i < alertInfo.length; i++) {
     if (newReading.location !== i) continue;
 
+    while (active.temperature.length <= i) active.temperature.push(false);
+    while (active.humidity.length <= i) active.humidity.push(false);
+    while (active.pressure.length <= i) active.pressure.push(false);
+
     const row = alertInfo[i];
-    handleAlertsForRow(i, newReading, row);
+    handleAlertsForRow(i, newReading, row, active);
   }
+
+  setActiveAlerts(active);
 }
 
-function handleAlertsForRow(i, newReading, row) {
+
+function handleAlertsForRow(i, newReading, row, active) {
   const [
     locationNameRaw,
     tempHighRaw, tempLowRaw,
@@ -345,7 +426,7 @@ function handleAlertsForRow(i, newReading, row) {
       value: temp,
       high: tempHigh,
       low: tempLow,
-      activeArray: temperatureAlertActive,
+      activeArray: active.temperature,
       alertFn: temperatureAlert,
       clearFn: clearTemperatureAlert,
     },
@@ -354,7 +435,7 @@ function handleAlertsForRow(i, newReading, row) {
       value: hum,
       high: humHigh,
       low: humLow,
-      activeArray: humidityAlertActive,
+      activeArray: active.humidity,
       alertFn: humidityAlert,
       clearFn: clearHumidityAlert,
     },
@@ -363,13 +444,13 @@ function handleAlertsForRow(i, newReading, row) {
       value: pres,
       high: presHigh,
       low: presLow,
-      activeArray: pressureAlertActive,
+      activeArray: active.pressure,
       alertFn: pressureAlert,
       clearFn: clearPressureAlert,
     },
   ];
 
-  for (const { value, high, low, activeArray, alertFn, clearFn } of checks) {
+  for (const { key, value, high, low, activeArray, alertFn, clearFn } of checks) {
     if (value == null || value === "" || isNaN(value)) continue;
 
     if (!isNaN(value) && !isNaN(high) && !isNaN(low) && (value >= high || value <= low)) {
@@ -380,9 +461,12 @@ function handleAlertsForRow(i, newReading, row) {
     } else if (activeArray[i]) {
       activeArray[i] = false;
       clearFn(locationName, recipients, newReading);
+    } else {
     }
   }
 }
+
+
 
 /** ---------- Safe Email Helper ---------- **/
 function safeSendEmail(recipients, subject, body) {
@@ -404,7 +488,7 @@ function safeSendEmail(recipients, subject, body) {
 
 /** ---------- Individual Alert Handlers ---------- **/
 
-// 🚨 Temperature alert triggered
+//Temperature alert triggered
 function temperatureAlert(locationName, recipients, newReading) {
   const subject = `Abnormal Temperature Reading Detected`;
   const body = `Date: ${newReading.date}
@@ -415,7 +499,7 @@ Reading: ${newReading.temperature}°C`;
   safeSendEmail(recipients, subject, body);
 }
 
-// ✅ Temperature alert cleared
+//Temperature alert cleared
 function clearTemperatureAlert(locationName, recipients, newReading) {
   const subject = `Abnormal Temperature Reading No Longer Detected`;
   const body = `Date: ${newReading.date}
@@ -426,7 +510,7 @@ Reading: ${newReading.temperature}°C`;
   safeSendEmail(recipients, subject, body);
 }
 
-// 🚨 Humidity alert triggered
+//Humidity alert triggered
 function humidityAlert(locationName, recipients, newReading) {
   const subject = `Abnormal Humidity Reading Detected`;
   const body = `Date: ${newReading.date}
@@ -437,7 +521,7 @@ Reading: ${(newReading.humidity * 100).toFixed(1)}%`;
   safeSendEmail(recipients, subject, body);
 }
 
-// ✅ Humidity alert cleared
+//Humidity alert cleared
 function clearHumidityAlert(locationName, recipients, newReading) {
   const subject = `Abnormal Humidity Reading No Longer Detected`;
   const body = `Date: ${newReading.date}
@@ -448,7 +532,7 @@ Reading: ${(newReading.humidity * 100).toFixed(1)}%`;
   safeSendEmail(recipients, subject, body);
 }
 
-// 🚨 Pressure alert triggered
+//Pressure alert triggered
 function pressureAlert(locationName, recipients, newReading) {
   const subject = `Abnormal Pressure Reading Detected`;
   const body = `Date: ${newReading.date}
@@ -459,7 +543,7 @@ Reading: ${newReading.pressure} Pa`;
   safeSendEmail(recipients, subject, body);
 }
 
-// ✅ Pressure alert cleared
+//Pressure alert cleared
 function clearPressureAlert(locationName, recipients, newReading) {
   const subject = `Abnormal Pressure Reading No Longer Detected`;
   const body = `Date: ${newReading.date}
@@ -487,29 +571,29 @@ function testAlertSystem() {
     originalSafeSendEmail(recipients, subject, body);
   };
 
-  // Optional: ensure alert data is fresh
   invalidateAlertInfoCache();
 
-  // Step 1: Trigger alert (simulate abnormal temperature)
   const fakeTriggerReading = {
     date: Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy/MM/dd"),
     time: Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "HH:mm:ss"),
-    temperature: 99,   // intentionally high to trigger
-    humidity: 0.85,    // normal
-    pressure: 101325,  // normal
-    location: 0,       // first location (index 0)
+    temperature: 18,
+    humidity: 0.50,
+    pressure: 110,
+    location: 4,
   };
 
   console.log("→ Simulating abnormal reading to TRIGGER alert");
   checkData(fakeTriggerReading);
 
-  // Step 2: Wait a moment, then simulate normal recovery
-  Utilities.sleep(1000); // 1 second delay for clarity in logs
+  Utilities.sleep(1000);
 
   const fakeClearReading = {
-    ...fakeTriggerReading,
-    temperature: 25, // normal range → should clear alert
+    date: Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy/MM/dd"),
     time: Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "HH:mm:ss"),
+    temperature: 30,
+    humidity: 0.81,
+    pressure: 111,
+    location: 4,
   };
 
   console.log("→ Simulating normal reading to CLEAR alert");

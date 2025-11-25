@@ -11,7 +11,7 @@
 
 <body>
   <div id="titleContainer" class="d-flex align-items-center mb-4">
-    <img src="https://lh3.googleusercontent.com/d/1tGsWBxiVM7UU40rY4osll8xZ8d_KXjlG=w886-h591" alt="Company Logo"
+    <img src="https://lh3.googleusercontent.com/d/1kRuL5NVtLZSg1pjicnS0Uy5tsLeS6diH=w886-h591" alt="Company Logo"
       id="globalLogo" class="me-3" style="height: 120px;">
     <p id="pageTitle">Latest Sensor Readings</p>
   </div>
@@ -33,19 +33,6 @@
           <td class="valueCell" id="locationCell">
             <select id="locationSelector" class="form-select" onchange="updateTable()">
               <option value="" disabled selected hidden>— Select Location —</option>
-              <!--
-              <option value="0">Pressure 1</option>
-              <option value="1">Pressure 2</option>
-              <option value="2">Pressure 3</option>
-              <option value="3">Pressure 4</option>
-              <option value="4">Pressure 5</option>
-              <option value="5">No Pressure 1</option>
-              <option value="6">No Pressure 2</option>
-              <option value="7">No Pressure 3</option>
-              <option value="8">No Pressure 4</option>
-              <option value="9">No Pressure 5</option>
-              <option value="10">No Pressure 6</option>
-              -->
             </select>
           </td>
           <td class="valueCell" id="dateCell"></td>
@@ -64,6 +51,11 @@
     <?var url = getScriptUrl();?>
     <a href="<?= url ?>?page=Readings History" role="button" class="btn btn-primary navButton">See Full History</a>
   </div>
+
+  <script>
+    window.SENSOR_FROM_SERVER = "<?= sensor ?>";
+    console.log("Injected SENSOR_FROM_SERVER:", window.SENSOR_FROM_SERVER);
+  </script>
 
   <?!= include('Latest Readings Script'); ?>
 </body>
